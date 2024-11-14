@@ -68,3 +68,45 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Environment Setup
+
+1. Copy `.env.example` to `.env`:
+
+```bash
+cp .env.example .env
+```
+
+2. Update the `.env` file with your Firebase configuration:
+
+```env
+REACT_APP_FIREBASE_API_KEY=your-api-key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your-auth-domain
+REACT_APP_FIREBASE_DATABASE_URL=your-database-url
+REACT_APP_FIREBASE_PROJECT_ID=your-project-id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your-storage-bucket
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
+REACT_APP_FIREBASE_APP_ID=your-app-id
+```
+
+3. Install dependencies:
+
+```bash
+npm install
+```
+
+4. Start the development server:
+
+```bash
+npm start
+```
+
+This setup:
+- Secures your Firebase credentials
+- Makes configuration easier to manage
+- Follows best practices for environment variables
+- Makes the project more maintainable
+- Adds proper documentation
+- Includes the Realtime Database configuration
+
+Would you like me to explain any specific part or add more features?

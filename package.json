@@ -1,21 +1,44 @@
 {
-  "name": "websitebuilder",
-  "version": "0.1.0",
+  "name": "harmonia-music-player",
+  "version": "1.0.0",
   "private": true,
-  "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
-  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
+  },
+  "dependencies": {
+    "@headlessui/react": "^1.7.18",
+    "@iconscout/react-unicons": "^2.0.2",
+    "@iconscout/react-unicons-solid": "^1.0.2",
+    "@tailwindcss/forms": "^0.5.7",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "autoprefixer": "^10.4.17",
+    "chart.js": "^4.4.6",
+    "date-fns": "^2.30.0",
+    "firebase": "^11.0.1",
+    "framer-motion": "^11.0.3",
+    "howler": "^2.2.4",
+    "music-metadata-browser": "^2.5.10",
+    "postcss": "^8.4.35",
+    "react": "^18.2.0",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^18.2.0",
+    "react-dropzone": "^14.2.3",
+    "react-router-dom": "^6.28.0",
+    "react-scripts": "5.0.1",
+    "tailwind-scrollbar": "^3.0.5",
+    "tailwindcss": "^3.4.1",
+    "tone": "14.7.77",
+    "web-vitals": "^2.1.4"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "postcss-preset-env": "^9.3.0"
   },
   "eslintConfig": {
     "extends": [
