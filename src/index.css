@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .scrollbar-custom {
+    @apply scrollbar-thin scrollbar-thumb-primary scrollbar-track-dark;
+  }
+}
+
 body {
   @apply bg-dark text-white;
 }
@@ -29,26 +35,9 @@ body {
   @apply h-full bg-primary rounded-full transition-all duration-100;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-dark;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-light rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-primary;
-}
-
 /* Smooth scrolling */
 .smooth-scroll {
   scroll-behavior: smooth;
   overflow-y: auto;
-  @apply scrollbar-thin scrollbar-thumb-primary scrollbar-track-dark;
-} 
+  @apply scrollbar-custom;
+}

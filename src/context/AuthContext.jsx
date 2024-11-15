@@ -1,20 +1,25 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
-  getAuth,
-  signInWithEmailAndPassword,
+  auth, 
+  db,
   createUserWithEmailAndPassword,
-  signOut as firebaseSignOut,
+  signInWithEmailAndPassword,
+  signOut,
   GoogleAuthProvider,
   signInWithPopup,
   sendPasswordResetEmail,
-  updateProfile
-} from 'firebase/auth';
-import { db } from '../config/firebase.config';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { app } from '../config/firebase.config';
+  updateProfile,
+  onAuthStateChanged
+} from '../config/firebase';
+
+import {
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp
+} from '../config/firebase';
 
 const AuthContext = createContext();
-const auth = getAuth(app);
 
 export function useAuth() {
   return useContext(AuthContext);
@@ -60,28 +65,51 @@ export function AuthProvider({ children }) {
     }
   };
 
-  async function signup(email, password, displayName) {
+  // Sign up function
+  const signup = async (email, password, displayName) => {
     try {
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(result.user, { displayName });
-      await createUserDocument(result.user);
-      return result;
+      const { user } = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(user, { displayName });
+      await createUserDocument(user);
+      return user;
     } catch (error) {
       throw error;
     }
-  }
+  };
 
-  async function login(email, password) {
+  // Sign in function
+  const signin = (email, password) => {
+    return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  // Sign out function
+  const signout = () => {
+    return signOut(auth);
+  };
+
+  // Reset password
+  const resetPassword = (email) => {
+    return sendPasswordResetEmail(auth, email);
+  };
+
+  // Update profile
+  const updateUserProfile = async (profile) => {
+    if (!currentUser) return;
+    
     try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      await createUserDocument(result.user);
-      return result;
+      await updateProfile(currentUser, profile);
+      await setDoc(doc(db, 'users', currentUser.uid), {
+        displayName: profile.displayName,
+        photoURL: profile.photoURL,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
     } catch (error) {
       throw error;
     }
-  }
+  };
 
-  async function loginWithGoogle() {
+  // Google sign in
+  const signInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
@@ -90,46 +118,10 @@ export function AuthProvider({ children }) {
     } catch (error) {
       throw error;
     }
-  }
-
-  async function logout() {
-    return firebaseSignOut(auth);
-  }
-
-  async function resetPassword(email) {
-    return sendPasswordResetEmail(auth, email);
-  }
-
-  async function updateUserProfile(data) {
-    if (!auth.currentUser) return;
-
-    try {
-      // Update auth profile
-      await updateProfile(auth.currentUser, {
-        displayName: data.displayName,
-        photoURL: data.photoURL
-      });
-
-      // Update Firestore document
-      const userRef = doc(db, 'users', auth.currentUser.uid);
-      await setDoc(userRef, {
-        ...data,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      // Update local state
-      setCurrentUser(prev => ({
-        ...prev,
-        ...data
-      }));
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      throw error;
-    }
-  }
+  };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async user => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         await createUserDocument(user);
       }
@@ -143,11 +135,11 @@ export function AuthProvider({ children }) {
   const value = {
     currentUser,
     signup,
-    login,
-    logout,
-    loginWithGoogle,
+    signin,
+    signout,
     resetPassword,
     updateUserProfile,
+    signInWithGoogle,
     createUserDocument
   };
 
@@ -156,4 +148,4 @@ export function AuthProvider({ children }) {
       {!loading && children}
     </AuthContext.Provider>
   );
-} 
+}
