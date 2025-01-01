@@ -1,27 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { 
+  UilPlay, UilHeart, UilShare, UilMusic,
+  UilSpinner
+} from '@iconscout/react-unicons';
 import { useParams } from 'react-router-dom';
-import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../../config/firebase.config';
-import { UilPlay, UilHeart, UilShare } from '@iconscout/react-unicons';
-import { useMusic } from '../../context/MusicContext';
+import { doc, getDoc } from 'firebase/firestore';
+import DefaultAlbumIcon from '../icons/DefaultAlbumIcon';
 
 const SharedMusic = () => {
-  const { musicId } = useParams();
   const [musicData, setMusicData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { dispatch } = useMusic();
+  const { id } = useParams();
 
   useEffect(() => {
     const fetchMusicData = async () => {
       try {
-        const musicDoc = await getDoc(doc(db, 'music', musicId));
-        if (musicDoc.exists()) {
-          setMusicData(musicDoc.data());
-          // Increment play count
-          await updateDoc(doc(db, 'music', musicId), {
-            plays: increment(1)
-          });
+        const docRef = doc(db, 'music', id);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          setMusicData({ id: docSnap.id, ...docSnap.data() });
+        } else {
+          console.log('No such document!');
         }
       } catch (error) {
         console.error('Error fetching music:', error);
@@ -31,27 +33,24 @@ const SharedMusic = () => {
     };
 
     fetchMusicData();
-  }, [musicId]);
-
-  const playMusic = () => {
-    if (musicData) {
-      dispatch({ type: 'SET_CURRENT_SONG', payload: musicData });
-    }
-  };
+  }, [id]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-screen">
+        <UilSpinner className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!musicData) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-bold">Music not found</h2>
-        <p className="text-lightest mt-2">This music might have been removed or is private.</p>
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <UilMusic className="w-12 h-12 mx-auto text-lightest mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Track Not Found</h2>
+          <p className="text-lightest">The track you're looking for doesn't exist or has been removed.</p>
+        </div>
       </div>
     );
   }
@@ -64,12 +63,22 @@ const SharedMusic = () => {
         className="bg-light p-6 rounded-xl"
       >
         <div className="flex space-x-8">
-          <motion.img
+          <motion.div
             whileHover={{ scale: 1.05 }}
-            src={musicData.albumArt || '/default-album-art.jpg'}
-            alt={musicData.title}
-            className="w-64 h-64 rounded-lg shadow-lg object-cover"
-          />
+            className="relative group"
+          >
+            {musicData.albumArt ? (
+              <img
+                src={musicData.albumArt}
+                alt={musicData.title}
+                className="w-64 h-64 rounded-lg shadow-lg object-cover"
+              />
+            ) : (
+              <div className="w-64 h-64 rounded-lg shadow-lg bg-dark flex items-center justify-center">
+                <DefaultAlbumIcon className="w-32 h-32 text-white" />
+              </div>
+            )}
+          </motion.div>
 
           <div className="flex-1">
             <h1 className="text-3xl font-bold mb-2">{musicData.title}</h1>

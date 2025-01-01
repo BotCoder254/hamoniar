@@ -14,6 +14,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate, useParams } from 'react-router-dom';
+import DefaultUserIcon from '../icons/DefaultUserIcon';
 
 const ProfileHeader = ({ user, isOwnProfile, onEdit, onImageUpload }) => (
   <div className="relative mb-8">
@@ -31,7 +32,7 @@ const ProfileHeader = ({ user, isOwnProfile, onEdit, onImageUpload }) => (
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => document.getElementById('cover-upload').click()}
-          className="absolute top-4 right-4 p-2 bg-dark/50 rounded-full"
+          className="absolute top-4 right-4 p-2 bg-dark/50 backdrop-blur-sm rounded-full text-white hover:bg-dark/70"
         >
           <UilCamera className="w-5 h-5" />
         </motion.button>
@@ -41,15 +42,21 @@ const ProfileHeader = ({ user, isOwnProfile, onEdit, onImageUpload }) => (
     {/* Profile Info */}
     <div className="absolute -bottom-16 left-8 flex items-end space-x-6">
       <div className="relative group">
-        <img
-          src={user.photoURL || '/default-avatar.png'}
-          alt={user.displayName}
-          className="w-32 h-32 rounded-full border-4 border-dark object-cover"
-        />
+        {user.photoURL ? (
+          <img
+            src={user.photoURL}
+            alt={user.displayName}
+            className="w-32 h-32 rounded-full border-4 border-dark bg-dark object-cover"
+          />
+        ) : (
+          <div className="w-32 h-32 rounded-full border-4 border-dark bg-dark flex items-center justify-center">
+            <DefaultUserIcon className="w-20 h-20 text-white" />
+          </div>
+        )}
         {isOwnProfile && (
           <label className="absolute inset-0 flex items-center justify-center bg-black/50 
                           opacity-0 group-hover:opacity-100 transition-opacity rounded-full 
-                          cursor-pointer">
+                          cursor-pointer backdrop-blur-sm">
             <UilCamera className="w-8 h-8 text-white" />
             <input
               type="file"
@@ -66,14 +73,14 @@ const ProfileHeader = ({ user, isOwnProfile, onEdit, onImageUpload }) => (
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">{user.displayName}</h1>
-            <p className="text-lightest">{user.bio || 'No bio yet'}</p>
+            <p className="text-lightest text-white">{user.bio || 'No bio yet'}</p>
           </div>
           {isOwnProfile && (
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={onEdit}
-              className="p-2 hover:bg-light rounded-full"
+              className="p-2 hover:bg-light/20 backdrop-blur-sm rounded-full"
             >
               <UilEdit className="w-6 h-6" />
             </motion.button>

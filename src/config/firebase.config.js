@@ -5,13 +5,14 @@ import { getStorage } from 'firebase/storage';
 import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID
+  apiKey: "AIzaSyDo7VNF957GGOigX21RI8cr9gSPaK_-r0Y",
+  authDomain: "community-hub-be1a3.firebaseapp.com",
+  databaseURL: "https://community-hub-be1a3-default-rtdb.firebaseio.com",
+  projectId: "community-hub-be1a3",
+  storageBucket: "community-hub-be1a3.appspot.com",
+  messagingSenderId: "140658585413",
+  appId: "1:140658585413:web:0377c49b2dedd1b6b4d82c",
+  measurementId: "G-HBPEQJBRL8"
 };
 
 export const app = initializeApp(firebaseConfig);

@@ -23,7 +23,7 @@ const UserContext = createContext();
 export const useUser = () => useContext(UserContext);
 
 export function UserProvider({ children }) {
-  const { currentUser } = useAuth();
+  const { currentUser, initialized } = useAuth();
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [followers, setFollowers] = useState([]);
@@ -32,6 +32,7 @@ export function UserProvider({ children }) {
 
   // Real-time user profile updates
   useEffect(() => {
+    if (!initialized) return;
     if (!currentUser?.uid) {
       setUserProfile(null);
       setLoading(false);
@@ -44,76 +45,105 @@ export function UserProvider({ children }) {
         setUserProfile(doc.data());
       }
       setLoading(false);
+    }, (error) => {
+      console.error("Error in user profile listener:", error);
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, initialized]);
 
   // Real-time followers updates
   useEffect(() => {
-    if (!currentUser?.uid) return;
+    if (!initialized || !currentUser?.uid) return;
 
     const followersRef = collection(db, 'followers');
     const q = query(followersRef, where('followingId', '==', currentUser.uid));
     
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const followersData = [];
-      for (const doc of snapshot.docs) {
-        const userData = await getDoc(doc.data().followerId);
-        if (userData.exists()) {
-          followersData.push({
-            id: doc.id,
-            ...userData.data()
-          });
+      try {
+        const followersData = [];
+        for (const doc of snapshot.docs) {
+          try {
+            const userData = await getDoc(doc(db, 'users', doc.data().followerId));
+            if (userData.exists()) {
+              followersData.push({
+                id: doc.id,
+                ...userData.data()
+              });
+            }
+          } catch (error) {
+            console.error("Error fetching follower user data:", error);
+          }
         }
+        setFollowers(followersData);
+      } catch (error) {
+        console.error("Error in followers listener:", error);
       }
-      setFollowers(followersData);
+    }, (error) => {
+      console.error("Followers listener error:", error);
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, initialized]);
 
   // Real-time following updates
   useEffect(() => {
-    if (!currentUser?.uid) return;
+    if (!initialized || !currentUser?.uid) return;
 
     const followingRef = collection(db, 'followers');
     const q = query(followingRef, where('followerId', '==', currentUser.uid));
     
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const followingData = [];
-      for (const doc of snapshot.docs) {
-        const userData = await getDoc(doc.data().followingId);
-        if (userData.exists()) {
-          followingData.push({
-            id: doc.id,
-            ...userData.data()
-          });
+      try {
+        const followingData = [];
+        for (const doc of snapshot.docs) {
+          try {
+            const userData = await getDoc(doc(db, 'users', doc.data().followingId));
+            if (userData.exists()) {
+              followingData.push({
+                id: doc.id,
+                ...userData.data()
+              });
+            }
+          } catch (error) {
+            console.error("Error fetching following user data:", error);
+          }
         }
+        setFollowing(followingData);
+      } catch (error) {
+        console.error("Error in following listener:", error);
       }
-      setFollowing(followingData);
+    }, (error) => {
+      console.error("Following listener error:", error);
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, initialized]);
 
   // Real-time activities updates
   useEffect(() => {
-    if (!currentUser?.uid) return;
+    if (!initialized || !currentUser?.uid) return;
 
     const activitiesRef = collection(db, 'activities');
     const q = query(activitiesRef, where('userId', '==', currentUser.uid));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const activitiesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setActivities(activitiesData);
+      try {
+        const activitiesData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setActivities(activitiesData);
+      } catch (error) {
+        console.error("Error processing activities data:", error);
+      }
+    }, (error) => {
+      console.error("Activities listener error:", error);
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, initialized]);
 
   // Update profile function
   const updateProfile = async (data) => {

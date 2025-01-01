@@ -62,6 +62,11 @@ const Settings = ({ isOpen, onClose }) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
+  const handleClose = (e) => {
+    e.stopPropagation();
+    onClose();
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'audio':
@@ -326,7 +331,7 @@ const Settings = ({ isOpen, onClose }) => {
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={onClose}
+                onClick={handleClose}
                 className="p-2 hover:bg-light/30 rounded-full"
               >
                 <UilTimes className="w-6 h-6" />

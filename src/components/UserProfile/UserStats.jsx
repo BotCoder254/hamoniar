@@ -9,7 +9,7 @@ export default function UserStats({ stats }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-white rounded-lg shadow">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-dark rounded-lg shadow">
       {statItems.map((item) => (
         <div key={item.label} className="text-center">
           <div className="text-2xl font-bold text-purple-600">{item.value}</div>
