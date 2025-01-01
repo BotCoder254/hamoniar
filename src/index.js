@@ -1,8 +1,8 @@
+import './config/firebase'; // Import Firebase configuration first
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
-import './config/firebase'; // Import Firebase configuration first
 import { AuthProvider } from './context/AuthContext';
 import { MusicProvider } from './context/MusicContext';
 import { UserProvider } from './context/UserContext';

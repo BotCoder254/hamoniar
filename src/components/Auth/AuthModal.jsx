@@ -14,7 +14,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login, signup, loginWithGoogle, resetPassword } = useAuth();
+  const { signin, signup, signInWithGoogle, resetPassword } = useAuth();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -23,7 +23,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
 
     try {
       if (mode === 'login') {
-        await login(email, password);
+        await signin(email, password);
       } else if (mode === 'signup') {
         await signup(email, password, displayName);
       } else if (mode === 'reset') {
@@ -39,7 +39,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
 
   async function handleGoogleLogin() {
     try {
-      await loginWithGoogle();
+      await signInWithGoogle();
       onClose();
     } catch (error) {
       setError(error.message);

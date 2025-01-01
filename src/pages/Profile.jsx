@@ -10,6 +10,7 @@ import EditProfileModal from '../components/UserProfile/EditProfileModal';
 import FollowList from '../components/UserProfile/FollowList';
 import { toast } from 'react-hot-toast';
 import { FiEdit3, FiUpload, FiMusic, FiActivity, FiUsers, FiHeart } from 'react-icons/fi';
+import DefaultUserIcon from '../components/icons/DefaultUserIcon';
 
 export default function Profile() {
   const { currentUser } = useAuth();
@@ -90,11 +91,17 @@ export default function Profile() {
                 whileHover={{ scale: 1.05 }}
                 className="relative w-32 h-32 rounded-full overflow-hidden ring-4 ring-purple-500 ring-opacity-50"
               >
-                <img
-                  src={userProfile?.photoURL || '/default-avatar.png'}
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                />
+                {userProfile?.photoURL ? (
+                  <img
+                    src={userProfile.photoURL}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-dark flex items-center justify-center">
+                    <DefaultUserIcon className="w-20 h-20 text-white" />
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <label className="cursor-pointer">
                     <input
@@ -161,7 +168,7 @@ export default function Profile() {
         </motion.div>
 
         {/* Navigation Tabs */}
-        <div className="bg-white rounded-xl shadow-lg mb-8">
+        <div className="bg-dark rounded-xl shadow-lg mb-8 text-white">
           <div className="flex overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -196,7 +203,7 @@ export default function Profile() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="bg-white rounded-2xl shadow-xl p-6"
+            className="bg-dark rounded-2xl shadow-xl p-6"
           >
             {activeTab === 'uploads' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

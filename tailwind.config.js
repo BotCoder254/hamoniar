@@ -1,3 +1,4 @@
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
@@ -5,13 +6,13 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        dark: '#121212',
-        primary: '#1DB954',  // Spotify-like green as primary color
-        light: '#282828',
+        primary: '#7c3aed',
+        secondary: '#4f46e5',
+        dark: '#1a1a1a',
+        light: '#2a2a2a',
+        lightest: '#4a4a4a',
       },
     },
   },
-  plugins: [
-    require('tailwind-scrollbar'),
-  ],
+  plugins: [],
 }

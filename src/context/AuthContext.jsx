@@ -28,6 +28,7 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   // Create user document in Firestore
   const createUserDocument = async (user, additionalData = {}) => {
@@ -123,10 +124,17 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        await createUserDocument(user);
+        try {
+          await createUserDocument(user);
+          setCurrentUser(user);
+        } catch (error) {
+          console.error("Error in auth state change:", error);
+        }
+      } else {
+        setCurrentUser(null);
       }
-      setCurrentUser(user);
       setLoading(false);
+      setInitialized(true);
     });
 
     return unsubscribe;
@@ -134,6 +142,8 @@ export function AuthProvider({ children }) {
 
   const value = {
     currentUser,
+    loading,
+    initialized,
     signup,
     signin,
     signout,

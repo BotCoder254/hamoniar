@@ -15,6 +15,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import LikeButton from '../LikeButton/LikeButton';
 import Comments from '../Comments/Comments';
+import DefaultAlbumIcon from '../icons/DefaultAlbumIcon';
 
 const ViewToggle = ({ view, onViewChange }) => (
   <div className="bg-light rounded-lg p-1 flex space-x-1">
@@ -110,11 +111,17 @@ const MusicCard = ({ track, onPlay }) => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="relative aspect-square">
-        <img
-          src={track.albumArt || "/default-album-art.jpg"}
-          alt={track.title}
-          className="w-full h-full object-cover"
-        />
+        {track.albumArt ? (
+          <img
+            src={track.albumArt}
+            alt={track.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-dark flex items-center justify-center">
+            <DefaultAlbumIcon className="w-24 h-24 text-white" />
+          </div>
+        )}
         <AnimatePresence>
           {isHovered && (
             <motion.div
@@ -188,11 +195,17 @@ const MusicList = ({ track, onPlay }) => (
   >
     <div className="flex items-center space-x-4">
       <div className="relative group">
-        <img
-          src={track.albumArt || "/default-album-art.jpg"}
-          alt={track.title}
-          className="w-16 h-16 rounded-lg object-cover"
-        />
+        {track.albumArt ? (
+          <img
+            src={track.albumArt}
+            alt={track.title}
+            className="w-16 h-16 rounded-lg object-cover"
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-lg bg-dark flex items-center justify-center">
+            <DefaultAlbumIcon className="w-10 h-10 text-white" />
+          </div>
+        )}
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}

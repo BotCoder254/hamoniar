@@ -4,6 +4,7 @@ import { UilPlay, UilHeart, UilEllipsisH, UilSpinner, UilHeadphones } from '@ico
 import { useUploadedTracks } from '../hooks/useUploadedTracks';
 import { useMusic } from '../context/MusicContext';
 import { formatDuration } from '../utils/audio.utils';
+import DefaultAlbumIcon from './icons/DefaultAlbumIcon';
 
 const PlaylistItem = ({ song, isActive, index, onPlay }) => (
   <motion.div 
@@ -19,11 +20,17 @@ const PlaylistItem = ({ song, isActive, index, onPlay }) => (
       className="relative group cursor-pointer"
       onClick={() => onPlay(song)}
     >
-      <img 
-        src={song.albumArt || "/default-album-art.jpg"} 
-        alt="Album Art" 
-        className="w-12 h-12 rounded-md shadow-md object-cover"
-      />
+      {song.albumArt ? (
+        <img 
+          src={song.albumArt} 
+          alt="Album Art" 
+          className="w-12 h-12 rounded-md shadow-md object-cover"
+        />
+      ) : (
+        <div className="w-12 h-12 rounded-md shadow-md bg-dark flex items-center justify-center">
+          <DefaultAlbumIcon className="w-8 h-8 text-white" />
+        </div>
+      )}
       <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 
                     transition-all duration-300 rounded-md flex items-center justify-center">
         <UilPlay className="w-5 h-5 text-white" />

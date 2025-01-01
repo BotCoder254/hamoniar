@@ -13,6 +13,7 @@ import Equalizer from './Equalizer';
 import TrackDetails from './TrackDetails';
 import { db } from '../config/firebase.config';
 import { doc, updateDoc, increment } from 'firebase/firestore';
+import DefaultAlbumIcon from './icons/DefaultAlbumIcon';
 
 const MusicPlayer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -37,6 +38,7 @@ const MusicPlayer = () => {
       state.currentSong.howl.on('play', () => {
         setIsPlaying(true);
         updatePlayCount();
+        requestAnimationFrame(updateProgress);
       });
       
       state.currentSong.howl.on('pause', () => {
@@ -58,6 +60,13 @@ const MusicPlayer = () => {
       }
     };
   }, [state.currentSong]);
+
+  const updateProgress = () => {
+    if (state.currentSong?.howl && isPlaying) {
+      setCurrentTime(state.currentSong.howl.seek());
+      requestAnimationFrame(updateProgress);
+    }
+  };
 
   const updatePlayCount = async () => {
     if (!currentUser || !state.currentSong?.id) return;
@@ -95,6 +104,12 @@ const MusicPlayer = () => {
     const seekTime = clickPosition * duration;
     state.currentSong.howl.seek(seekTime);
     setCurrentTime(seekTime);
+  };
+
+  const handleProgressHover = (e) => {
+    const progressBar = e.currentTarget;
+    const hoverPosition = (e.pageX - progressBar.offsetLeft) / progressBar.offsetWidth * 100;
+    progressBar.style.setProperty('--progress-position', `${hoverPosition}%`);
   };
 
   const handleVolumeChange = (value) => {
@@ -183,6 +198,7 @@ const MusicPlayer = () => {
         <div 
           className="progress-bar mb-2 cursor-pointer"
           onClick={handleProgressClick}
+          onMouseMove={handleProgressHover}
         >
           <motion.div 
             className="progress-bar-filled"
@@ -212,11 +228,18 @@ const MusicPlayer = () => {
               className="relative group cursor-pointer"
               onClick={() => !isMinimized && setShowTrackDetails(true)}
             >
-              <img 
-                src={state.currentSong?.albumArt || "/default-album-art.jpg"} 
-                alt="Album Art" 
-                className={`object-cover rounded-lg shadow-lg ${isMinimized ? 'w-12 h-12' : 'w-16 h-16'}`}
-              />
+              {state.currentSong?.albumArt ? (
+                <img 
+                  src={state.currentSong.albumArt} 
+                  alt="Album Art" 
+                  className={`object-cover rounded-lg shadow-lg ${isMinimized ? 'w-12 h-12' : 'w-16 h-16'}`}
+                />
+              ) : (
+                <div className={`bg-light rounded-lg shadow-lg flex items-center justify-center
+                              ${isMinimized ? 'w-12 h-12' : 'w-16 h-16'}`}>
+                  <DefaultAlbumIcon className={isMinimized ? 'w-8 h-8' : 'w-10 h-10'} />
+                </div>
+              )}
               {!isMinimized && (
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 
                             transition-all duration-300 rounded-lg flex items-center justify-center">

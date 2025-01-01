@@ -1,7 +1,11 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UilMusic, UilClock, UilCalendarAlt } from '@iconscout/react-unicons';
+import { 
+  UilMusic, UilCalendarAlt, UilClock,
+  UilPlay, UilPause, UilHeart, UilShare
+} from '@iconscout/react-unicons';
 import { useMusic } from '../context/MusicContext';
+import DefaultAlbumIcon from './icons/DefaultAlbumIcon';
 
 const TrackDetails = ({ isExpanded, onClose }) => {
   const { state } = useMusic();
@@ -30,12 +34,19 @@ const TrackDetails = ({ isExpanded, onClose }) => {
                 whileHover={{ scale: 1.05 }}
                 className="relative group"
               >
-                <img
-                  src={currentSong?.albumArt || '/default-album-art.jpg'}
-                  alt="Album Art"
-                  className="w-64 h-64 rounded-lg shadow-2xl"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 rounded-lg flex items-center justify-center">
+                {currentSong?.albumArt ? (
+                  <img
+                    src={currentSong.albumArt}
+                    alt="Album Art"
+                    className="w-64 h-64 rounded-lg shadow-2xl object-cover"
+                  />
+                ) : (
+                  <div className="w-64 h-64 rounded-lg shadow-2xl bg-light flex items-center justify-center">
+                    <DefaultAlbumIcon className="w-32 h-32 text-white" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 
+                              transition-all duration-300 rounded-lg flex items-center justify-center">
                   <UilMusic className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </motion.div>

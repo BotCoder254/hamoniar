@@ -1,7 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { UilMusic } from '@iconscout/react-unicons';
 import { useMusic } from '../context/MusicContext';
 import MusicVisualization from './MusicVisualization';
+import DefaultAlbumIcon from './icons/DefaultAlbumIcon';
 
 const NowPlaying = () => {
   const { state } = useMusic();
@@ -20,11 +22,17 @@ const NowPlaying = () => {
           whileHover={{ scale: 1.05 }}
           className="relative group w-64 h-64"
         >
-          <img
-            src={currentSong?.albumArt || "/default-album-art.jpg"}
-            alt="Album Art"
-            className="w-full h-full object-cover rounded-lg shadow-2xl"
-          />
+          {currentSong?.albumArt ? (
+            <img
+              src={currentSong.albumArt}
+              alt="Album Art"
+              className="w-full h-full object-cover rounded-lg shadow-2xl"
+            />
+          ) : (
+            <div className="w-full h-full bg-light rounded-lg shadow-2xl flex items-center justify-center">
+              <DefaultAlbumIcon className="w-32 h-32 text-white" />
+            </div>
+          )}
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 
                         transition-opacity rounded-lg flex items-center justify-center">
             <MusicVisualization className="w-full h-full" />
