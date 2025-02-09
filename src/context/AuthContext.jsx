@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   auth, 
-  db,
+  db
+} from '../config/firebase.config';
+import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
@@ -10,14 +12,13 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   onAuthStateChanged
-} from '../config/firebase';
-
+} from 'firebase/auth';
 import {
   doc,
   setDoc,
   getDoc,
   serverTimestamp
-} from '../config/firebase';
+} from 'firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -84,8 +85,18 @@ export function AuthProvider({ children }) {
   };
 
   // Sign out function
-  const signout = () => {
-    return signOut(auth);
+  const signout = async () => {
+    try {
+      await signOut(auth);
+      setCurrentUser(null);
+      // Clear any local storage or state that needs to be cleared
+      localStorage.removeItem('user');
+      localStorage.removeItem('userPreferences');
+      return true;
+    } catch (error) {
+      console.error('Error signing out:', error);
+      throw error;
+    }
   };
 
   // Reset password
@@ -127,17 +138,30 @@ export function AuthProvider({ children }) {
         try {
           await createUserDocument(user);
           setCurrentUser(user);
+          // Store minimal user info in localStorage
+          localStorage.setItem('user', JSON.stringify({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName
+          }));
         } catch (error) {
           console.error("Error in auth state change:", error);
         }
       } else {
         setCurrentUser(null);
+        localStorage.removeItem('user');
       }
       setLoading(false);
       setInitialized(true);
     });
 
-    return unsubscribe;
+    // Check for stored user on mount
+    const storedUser = localStorage.getItem('user');
+    if (storedUser && !currentUser) {
+      setCurrentUser(JSON.parse(storedUser));
+    }
+
+    return () => unsubscribe();
   }, []);
 
   const value = {

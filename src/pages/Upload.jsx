@@ -4,19 +4,18 @@ import { useDropzone } from 'react-dropzone';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { useAchievements } from '../context/AchievementContext';
-import { storage, db } from '../config/firebase';
+import { storage, db } from '../config/firebase.config';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { UilCloudUpload, UilMusic } from '@iconscout/react-unicons';
 
 const Upload = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { success, error } = useToast();
-  const { userStats, updateUserStats } = useAchievements();
+  const { success, error: showError } = useToast();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [trackInfo, setTrackInfo] = useState({
     title: '',
     artist: '',
@@ -24,18 +23,53 @@ const Upload = () => {
     description: ''
   });
 
+  const validateForm = () => {
+    if (!selectedFile) {
+      showError('Please select a file to upload');
+      return false;
+    }
+    if (!trackInfo.title.trim()) {
+      showError('Please enter a track title');
+      return false;
+    }
+    if (!trackInfo.artist.trim()) {
+      showError('Please enter an artist name');
+      return false;
+    }
+    if (!trackInfo.genre) {
+      showError('Please select a genre');
+      return false;
+    }
+    return true;
+  };
+
   const onDrop = useCallback(async (acceptedFiles) => {
-    if (!acceptedFiles.length) return;
+    if (!acceptedFiles.length || !currentUser) return;
+    setSelectedFile(acceptedFiles[0]);
+  }, [currentUser]);
+
+  const handleUpload = async () => {
+    if (!validateForm()) return;
 
     try {
       setUploading(true);
-      const file = acceptedFiles[0];
+      const file = selectedFile;
 
-      // Create storage reference
-      const storageRef = ref(storage, `tracks/${currentUser.uid}/${Date.now()}-${file.name}`);
+      // Create storage reference with a unique name
+      const timestamp = Date.now();
+      const fileName = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+      const storageRef = ref(storage, `audio/${currentUser.uid}/${fileName}`);
       
-      // Upload file
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      // Upload file with metadata
+      const metadata = {
+        contentType: file.type,
+        customMetadata: {
+          userId: currentUser.uid,
+          originalName: file.name
+        }
+      };
+      
+      const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
       uploadTask.on('state_changed',
         (snapshot) => {
@@ -44,7 +78,7 @@ const Upload = () => {
         },
         (error) => {
           console.error('Upload error:', error);
-          error('Failed to upload track. Please try again.');
+          showError('Failed to upload track. Please try again.');
           setUploading(false);
         },
         async () => {
@@ -52,29 +86,46 @@ const Upload = () => {
             // Get download URL
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
 
-            // Update track info in Firestore
-            const trackRef = doc(db, 'tracks', currentUser.uid);
-            await updateDoc(trackRef, {
-              tracks: increment(1),
-              lastUpload: new Date().toISOString(),
-              [`trackList.${Date.now()}`]: {
-                ...trackInfo,
-                url: downloadURL,
-                fileName: file.name,
-                uploadDate: new Date().toISOString()
-              }
-            });
+            // Save track info to Firestore
+            const trackData = {
+              title: trackInfo.title.trim(),
+              artist: trackInfo.artist.trim(),
+              genre: trackInfo.genre,
+              description: trackInfo.description.trim(),
+              audioUrl: downloadURL,
+              fileName: fileName,
+              originalFileName: file.name,
+              userId: currentUser.uid,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+              duration: 0,
+              plays: 0,
+              likes: 0,
+              public: true,
+              fileType: file.type,
+              fileSize: file.size
+            };
 
-            // Update user stats for achievements
-            await updateUserStats({
-              totalUploads: (userStats?.totalUploads || 0) + 1
+            // Add track document to 'tracks' collection
+            const docRef = await addDoc(collection(db, 'tracks'), trackData);
+
+            // Update the document with its ID
+            await addDoc(collection(db, 'activities'), {
+              type: 'upload',
+              userId: currentUser.uid,
+              trackId: docRef.id,
+              timestamp: serverTimestamp(),
+              details: {
+                trackName: trackData.title,
+                genre: trackData.genre
+              }
             });
 
             success('Track uploaded successfully!');
             navigate('/library');
           } catch (err) {
             console.error('Error saving track info:', err);
-            error('Failed to save track information.');
+            showError('Failed to save track information.');
           } finally {
             setUploading(false);
             setUploadProgress(0);
@@ -83,10 +134,10 @@ const Upload = () => {
       );
     } catch (err) {
       console.error('Upload error:', err);
-      error('Failed to start upload. Please try again.');
+      showError('Failed to start upload. Please try again.');
       setUploading(false);
     }
-  }, [currentUser, trackInfo, navigate, success, error, updateUserStats, userStats]);
+  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -94,7 +145,8 @@ const Upload = () => {
       'audio/*': ['.mp3', '.wav', '.ogg', '.m4a']
     },
     multiple: false,
-    disabled: uploading
+    disabled: uploading,
+    maxSize: 50 * 1024 * 1024 // 50MB
   });
 
   const handleInputChange = (e) => {
@@ -104,6 +156,14 @@ const Upload = () => {
       [name]: value
     }));
   };
+
+  if (!currentUser) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-4">Please login to upload tracks</h1>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -154,13 +214,15 @@ const Upload = () => {
             <>
               <UilCloudUpload className="w-20 h-20 mx-auto text-gray-400" />
               <div className="text-lg font-medium">
-                {isDragActive
-                  ? "Drop your track here..."
-                  : "Drag & drop your track here, or click to browse"
+                {selectedFile 
+                  ? `Selected: ${selectedFile.name}`
+                  : isDragActive
+                    ? "Drop your track here..."
+                    : "Drag & drop your track here, or click to browse"
                 }
               </div>
               <p className="text-sm text-gray-400">
-                Supports MP3, WAV, OGG, and M4A files
+                Supports MP3, WAV, OGG, and M4A files (max 50MB)
               </p>
             </>
           )}
@@ -171,7 +233,7 @@ const Upload = () => {
       <div className="mt-8 space-y-6">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Track Title
+            Track Title <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -181,12 +243,13 @@ const Upload = () => {
             className="w-full px-4 py-2 bg-dark/50 rounded-lg border border-gray-600
                      focus:border-primary focus:ring-1 focus:ring-primary"
             placeholder="Enter track title"
+            required
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Artist Name
+            Artist Name <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -196,12 +259,13 @@ const Upload = () => {
             className="w-full px-4 py-2 bg-dark/50 rounded-lg border border-gray-600
                      focus:border-primary focus:ring-1 focus:ring-primary"
             placeholder="Enter artist name"
+            required
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Genre
+            Genre <span className="text-red-500">*</span>
           </label>
           <select
             name="genre"
@@ -209,6 +273,7 @@ const Upload = () => {
             onChange={handleInputChange}
             className="w-full px-4 py-2 bg-dark/50 rounded-lg border border-gray-600
                      focus:border-primary focus:ring-1 focus:ring-primary"
+            required
           >
             <option value="">Select a genre</option>
             <option value="electronic">Electronic</option>
@@ -235,6 +300,22 @@ const Upload = () => {
                      focus:border-primary focus:ring-1 focus:ring-primary resize-none"
             placeholder="Enter track description"
           />
+        </div>
+
+        <div className="pt-4">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleUpload}
+            disabled={uploading || !selectedFile}
+            className={`w-full py-3 rounded-lg font-medium ${
+              uploading || !selectedFile
+                ? 'bg-gray-600 cursor-not-allowed'
+                : 'bg-primary hover:bg-primary/90'
+            }`}
+          >
+            {uploading ? 'Uploading...' : 'Upload Track'}
+          </motion.button>
         </div>
       </div>
     </div>

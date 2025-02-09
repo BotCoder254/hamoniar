@@ -44,9 +44,9 @@ const MainLayout = ({ children }) => {
       className="flex min-h-screen bg-gradient-to-b from-dark to-black"
     >
       {currentUser && <Sidebar />}
-      <div className={`flex-1 ${currentUser ? 'ml-64' : ''}`}>
+      <div className={`flex-1 flex flex-col ${currentUser ? 'ml-64' : ''}`}>
         <Header />
-        <main className="px-8 py-6">
+        <main className="flex-1 px-8 py-6 overflow-y-auto pb-24">
           <ErrorBoundary>
             <Suspense fallback={<LoadingFallback />}>
               {children}
@@ -54,8 +54,8 @@ const MainLayout = ({ children }) => {
           </ErrorBoundary>
         </main>
         {currentUser && <FloatingActionButton />}
+        {currentUser && <MusicPlayer />}
       </div>
-      {currentUser && <MusicPlayer />}
     </motion.div>
   );
 };

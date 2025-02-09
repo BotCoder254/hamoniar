@@ -1,18 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   UilSearch, UilBell, UilUserCircle, UilSetting,
   UilAngleLeft, UilAngleRight, UilCloudUpload 
 } from '@iconscout/react-unicons';
 import { useAuth } from '../context/AuthContext';
+import { useUser } from '../context/UserContext';
 import AuthModal from './Auth/AuthModal';
 import { useNavigate } from 'react-router-dom';
 
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const { currentUser, logout } = useAuth();
+  const { currentUser, signout } = useAuth();
+  const { userProfile } = useUser();
   const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await signout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   return (
     <motion.header 
@@ -26,6 +37,7 @@ const Header = () => {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             className="p-2 rounded-full bg-black/50"
+            onClick={() => window.history.back()}
           >
             <UilAngleLeft className="w-5 h-5" />
           </motion.button>
@@ -33,6 +45,7 @@ const Header = () => {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             className="p-2 rounded-full bg-black/50"
+            onClick={() => window.history.forward()}
           >
             <UilAngleRight className="w-5 h-5" />
           </motion.button>
@@ -72,18 +85,18 @@ const Header = () => {
               whileHover={{ scale: 1.1 }}
               className="flex items-center space-x-2 p-1 rounded-full hover:bg-light/50 cursor-pointer group"
             >
-              {currentUser.photoURL ? (
+              {userProfile?.photoURL || currentUser.photoURL ? (
                 <img 
-                  src={currentUser.photoURL} 
+                  src={userProfile?.photoURL || currentUser.photoURL} 
                   alt="Profile" 
-                  className="w-8 h-8 rounded-full"
+                  className="w-8 h-8 rounded-full object-cover"
                 />
               ) : (
                 <UilUserCircle className="w-8 h-8 text-primary" />
               )}
-              <span className="text-sm font-medium">{currentUser.displayName}</span>
+              <span className="text-sm font-medium">{userProfile?.displayName || currentUser.displayName}</span>
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="text-sm text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 Logout
