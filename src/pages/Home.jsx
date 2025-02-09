@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import NowPlaying from '../components/NowPlaying';
 import TrendingSection from '../components/TrendingSection/TrendingSection';
 import RecentActivity from '../components/ActivityFeed/ActivityFeed';
-import RecommendedUsers from '../components/UserFollowing/RecommendedUsers';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
@@ -38,25 +37,11 @@ const Home = () => {
         <TrendingSection />
       </section>
 
-      {/* Activity and Recommendations Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Activity */}
-        <div className="lg:col-span-2">
-          <h2 className="text-2xl font-bold mb-6">Recent Activity</h2>
-          <RecentActivity />
-        </div>
-
-        {/* Recommended Users */}
-        <div>
-          <h2 className="text-2xl font-bold mb-6">Recommended Users</h2>
-          <RecommendedUsers 
-            onFollow={(user) => {
-              addToast(`Started following ${user.displayName}`, 'success');
-            }}
-            currentFollowing={[]}
-          />
-        </div>
-      </div>
+      {/* Recent Activity */}
+      <section>
+        <h2 className="text-2xl font-bold mb-6">Recent Activity</h2>
+        <RecentActivity />
+      </section>
     </div>
   );
 };

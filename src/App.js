@@ -24,8 +24,6 @@ const Upload = React.lazy(() => import('./pages/Upload'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Activity = React.lazy(() => import('./pages/Activity'));
-const Following = React.lazy(() => import('./pages/Following'));
-const Settings = React.lazy(() => import('./pages/Settings'));
 const TrendingPage = React.lazy(() => import('./pages/TrendingPage'));
 
 // Components
@@ -90,8 +88,6 @@ function App() {
                     <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                     <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                     <Route path="/activity" element={<ProtectedRoute><Activity /></ProtectedRoute>} />
-                    <Route path="/following" element={<ProtectedRoute><Following /></ProtectedRoute>} />
-                    <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                     <Route 
                       path="/trending" 
                       element={

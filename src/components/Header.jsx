@@ -61,13 +61,6 @@ const Header = () => {
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          className="p-2 rounded-full hover:bg-light/50"
-        >
-          <UilSetting className="w-5 h-5" />
-        </motion.button>
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
           onClick={() => navigate('/upload')}
           className="p-2 rounded-full bg-primary hover:bg-primary/90"
         >

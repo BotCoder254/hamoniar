@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   UilHome, UilCompass, UilMusic, UilUser,
-  UilHeadphones, UilSignout, UilChart, UilUsersAlt, UilBell, UilCloudUpload, UilSetting
+  UilHeadphones, UilSignout, UilChart, UilBell, UilCloudUpload
 } from '@iconscout/react-unicons';
 import { useAuth } from '../context/AuthContext';
 
@@ -19,9 +19,7 @@ const Sidebar = () => {
     { icon: <UilMusic />, text: 'Library', path: '/library' },
     { icon: <UilCloudUpload />, text: 'Upload', path: '/upload' },
     { icon: <UilUser />, text: 'Profile', path: '/profile' },
-    { icon: <UilUsersAlt />, text: 'Following', path: '/following' },
     { icon: <UilBell />, text: 'Activity', path: '/activity' },
-    { icon: <UilSetting />, text: 'Settings', path: '/settings' },
   ];
 
   const handleLogout = async () => {
