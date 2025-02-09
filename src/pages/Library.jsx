@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useMusic } from '../context/MusicContext';
 import { db, storage } from '../config/firebase.config';
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { UilPlay, UilTrashAlt, UilHeart } from '@iconscout/react-unicons';
 import { useToast } from '../context/ToastContext';
@@ -17,35 +17,35 @@ const Library = () => {
   const { state, dispatch } = useMusic();
 
   useEffect(() => {
-    fetchUserTracks();
-  }, [currentUser]);
-
-  const fetchUserTracks = async () => {
     if (!currentUser) return;
 
-    try {
-      const q = query(
-        collection(db, 'tracks'),
-        where('userId', '==', currentUser.uid)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const trackList = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        plays: doc.data().plays || 0,
-        likes: doc.data().likes || 0,
-        duration: doc.data().duration || 0
-      }));
-      
-      setTracks(trackList);
-    } catch (error) {
-      console.error('Error fetching tracks:', error);
-      showError('Failed to load your tracks');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const q = query(
+      collection(db, 'tracks'),
+      where('userId', '==', currentUser.uid)
+    );
+    
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        const trackList = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          plays: doc.data().plays || 0,
+          likes: doc.data().likes || 0,
+          duration: doc.data().duration || 0
+        }));
+        
+        setTracks(trackList);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching tracks:', error);
+        showError('Failed to load your tracks');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [currentUser]);
 
   const handlePlay = (track) => {
     try {
@@ -84,8 +84,6 @@ const Library = () => {
           dispatch({ type: 'SET_CURRENT_SONG', payload: null });
         }
 
-        // Update local state
-        setTracks(prev => prev.filter(t => t.id !== track.id));
         success('Track deleted successfully');
       } else {
         showError('Invalid track ID');
