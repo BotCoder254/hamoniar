@@ -5,9 +5,10 @@ import { useAuth } from '../../context/AuthContext';
 import { db } from '../../config/firebase.config';
 import { 
   doc, updateDoc, arrayUnion, arrayRemove, 
-  increment, getDoc, onSnapshot,
-  collection, addDoc, serverTimestamp
+  onSnapshot, collection, addDoc, serverTimestamp,
+  increment
 } from 'firebase/firestore';
+import { toast } from 'react-hot-toast';
 
 const LikeButton = ({ trackId }) => {
   const [isLiked, setIsLiked] = useState(false);
@@ -18,12 +19,12 @@ const LikeButton = ({ trackId }) => {
   useEffect(() => {
     if (!trackId || !currentUser) return;
 
-    // Subscribe to real-time updates for likes
-    const unsubscribe = onSnapshot(doc(db, 'music', trackId), (doc) => {
+    const trackRef = doc(db, 'music', trackId);
+    const unsubscribe = onSnapshot(trackRef, (doc) => {
       if (doc.exists()) {
         const data = doc.data();
-        setLikeCount(data.likes?.length || 0);
         setIsLiked(data.likes?.includes(currentUser.uid) || false);
+        setLikeCount(data.likes?.length || 0);
       }
     });
 
@@ -31,29 +32,21 @@ const LikeButton = ({ trackId }) => {
   }, [trackId, currentUser]);
 
   const handleLike = async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      toast.error('Please log in to like tracks');
+      return;
+    }
 
     setIsAnimating(true);
-    const trackRef = doc(db, 'music', trackId);
 
     try {
-      if (isLiked) {
-        await updateDoc(trackRef, {
-          likes: arrayRemove(currentUser.uid)
-        });
+      const trackRef = doc(db, 'music', trackId);
+      const trackData = (await trackRef.get()).data();
 
-        // Add to activity feed
-        await addDoc(collection(db, 'activities'), {
-          type: 'unlike',
-          userId: currentUser.uid,
-          userName: currentUser.displayName,
-          userPhotoURL: currentUser.photoURL,
-          trackId,
-          timestamp: serverTimestamp()
-        });
-      } else {
+      if (!isLiked) {
         await updateDoc(trackRef, {
-          likes: arrayUnion(currentUser.uid)
+          likes: arrayUnion(currentUser.uid),
+          likeCount: increment(1)
         });
 
         // Add to activity feed
@@ -63,11 +56,23 @@ const LikeButton = ({ trackId }) => {
           userName: currentUser.displayName,
           userPhotoURL: currentUser.photoURL,
           trackId,
-          timestamp: serverTimestamp()
+          trackName: trackData?.title || 'Unknown Track',
+          timestamp: serverTimestamp(),
+          read: false
         });
+
+        toast.success('Added to your liked tracks');
+      } else {
+        await updateDoc(trackRef, {
+          likes: arrayRemove(currentUser.uid),
+          likeCount: increment(-1)
+        });
+
+        toast.success('Removed from your liked tracks');
       }
     } catch (error) {
       console.error('Error updating like:', error);
+      toast.error('Failed to update like status');
     }
 
     setTimeout(() => setIsAnimating(false), 300);
@@ -83,7 +88,7 @@ const LikeButton = ({ trackId }) => {
       >
         <UilHeart 
           className={`w-5 h-5 transition-colors duration-300
-            ${isLiked ? 'text-red-500 fill-current' : 'text-lightest'}`}
+            ${isLiked ? 'text-red-500 fill-current' : 'text-white/70 hover:text-white'}`}
         />
         <AnimatePresence>
           {isAnimating && (
@@ -102,7 +107,7 @@ const LikeButton = ({ trackId }) => {
         key={likeCount}
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="text-sm text-lightest"
+        className="text-sm text-white/70"
       >
         {likeCount}
       </motion.span>

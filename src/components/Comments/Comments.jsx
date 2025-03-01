@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
 import EmojiPicker from 'emoji-picker-react';
+import { toast } from 'react-hot-toast';
 
 const CommentItem = ({ comment, onDelete, currentUserId }) => {
   const [showOptions, setShowOptions] = useState(false);
@@ -44,8 +45,8 @@ const CommentItem = ({ comment, onDelete, currentUserId }) => {
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between">
           <div>
-            <span className="font-medium text-sm">{comment.userName}</span>
-            <p className="text-sm mt-1 text-lightest">{comment.text}</p>
+            <span className="font-medium text-sm text-white">{comment.userName}</span>
+            <p className="text-sm mt-1 text-white/90">{comment.text}</p>
           </div>
           <div className="relative">
             {currentUserId === comment.userId && (
@@ -83,8 +84,8 @@ const CommentItem = ({ comment, onDelete, currentUserId }) => {
           </div>
         </div>
         <div className="flex items-center space-x-2 mt-1">
-          <UilClock className="w-3 h-3 text-lightest" />
-          <span className="text-xs text-lightest">
+          <UilClock className="w-3 h-3 text-white/70" />
+          <span className="text-xs text-white/70">
             {getFormattedTime(comment.timestamp)}
           </span>
         </div>
@@ -149,16 +150,44 @@ const Comments = ({ trackId }) => {
       });
 
       setNewComment('');
+      toast.success('Comment added successfully!', {
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+        duration: 2000,
+      });
     } catch (error) {
       console.error('Error adding comment:', error);
+      toast.error('Failed to add comment. Please try again.', {
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+        duration: 2000,
+      });
     }
   };
 
   const handleDelete = async (commentId) => {
     try {
       await deleteDoc(doc(db, 'music', trackId, 'comments', commentId));
+      toast.success('Comment deleted successfully!', {
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+        duration: 2000,
+      });
     } catch (error) {
       console.error('Error deleting comment:', error);
+      toast.error('Failed to delete comment. Please try again.', {
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+        duration: 2000,
+      });
     }
   };
 
@@ -219,18 +248,23 @@ const Comments = ({ trackId }) => {
                               animate={{ opacity: 1, scale: 1 }}
                               exit={{ opacity: 0, scale: 0.95 }}
                               className="absolute bottom-full right-0 mb-2 z-50 bg-dark rounded-lg shadow-xl overflow-hidden"
-                              style={{ maxHeight: '400px' }}
+                              style={{ 
+                                maxHeight: '400px',
+                                width: '320px',
+                                backgroundColor: '#1a1a1a'
+                              }}
                             >
                               <EmojiPicker
                                 onEmojiClick={onEmojiClick}
                                 disableAutoFocus
                                 native
-                                width={280}
+                                width="100%"
                                 height={400}
                                 previewConfig={{ showPreview: false }}
                                 searchDisabled
                                 skinTonesDisabled
                                 theme="dark"
+                                lazyLoadEmojis
                               />
                             </motion.div>
                           )}
