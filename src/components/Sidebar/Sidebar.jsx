@@ -3,7 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   UilEstate, UilMusic, UilHeart, UilHistory,
-  UilUsersAlt, UilUpload, UilCompass, UilAngleDown
+  UilUsersAlt, UilUpload, UilCompass, UilAngleDown,
+  UilChart
 } from '@iconscout/react-unicons';
 import { useAuth } from '../../context/AuthContext';
 import { useUser } from '../../context/UserContext';
@@ -36,7 +37,8 @@ const Sidebar = () => {
     { to: '/liked', icon: UilHeart, label: 'Liked Tracks' },
     { to: '/history', icon: UilHistory, label: 'History' },
     { to: '/following', icon: UilUsersAlt, label: 'Following' },
-    { to: '/upload', icon: UilUpload, label: 'Upload' }
+    { to: '/upload', icon: UilUpload, label: 'Upload' },
+    { to: '/dashboard', icon: UilChart, label: 'Dashboard' }
   ];
 
   if (!currentUser) return null;
@@ -96,13 +98,26 @@ const Sidebar = () => {
             <UilAngleDown className="w-5 h-5" />
           </motion.div>
         </motion.button>
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {isSuggestedUsersOpen && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              animate={{ 
+                height: 'auto', 
+                opacity: 1,
+                transition: {
+                  height: { duration: 0.3 },
+                  opacity: { duration: 0.2 }
+                }
+              }}
+              exit={{ 
+                height: 0, 
+                opacity: 0,
+                transition: {
+                  height: { duration: 0.3 },
+                  opacity: { duration: 0.1 }
+                }
+              }}
               className="overflow-hidden"
             >
               <SidebarUsers />

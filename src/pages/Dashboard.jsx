@@ -18,7 +18,7 @@ const Dashboard = () => {
   const [topTracks, setTopTracks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user stats
+  // Fetch user stats in real-time
   useEffect(() => {
     if (!currentUser) return;
 
@@ -40,49 +40,62 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Fetch recent tracks
+  // Fetch recent tracks in real-time with proper indexing
   useEffect(() => {
     if (!currentUser) return;
 
     const tracksRef = collection(db, 'tracks');
     const recentQuery = query(
       tracksRef,
-      where('userId', '==', currentUser.uid)
+      where('userId', '==', currentUser.uid),
+      orderBy('createdAt', 'desc'),
+      limit(5)
     );
 
     const unsubscribe = onSnapshot(recentQuery, (snapshot) => {
-      const tracks = snapshot.docs
-        .map(doc => ({
+      try {
+        const tracks = snapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
-        }))
-        .sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis())
-        .slice(0, 5);
-      setRecentTracks(tracks);
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate()
+        }));
+        setRecentTracks(tracks);
+      } catch (error) {
+        console.error('Error fetching recent tracks:', error);
+      }
+    }, (error) => {
+      console.error('Recent tracks subscription error:', error);
     });
 
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Fetch top tracks
+  // Fetch top tracks in real-time with proper indexing
   useEffect(() => {
     if (!currentUser) return;
 
     const tracksRef = collection(db, 'tracks');
     const topQuery = query(
       tracksRef,
-      where('userId', '==', currentUser.uid)
+      where('userId', '==', currentUser.uid),
+      orderBy('playCount', 'desc'),
+      limit(5)
     );
 
     const unsubscribe = onSnapshot(topQuery, (snapshot) => {
-      const tracks = snapshot.docs
-        .map(doc => ({
+      try {
+        const tracks = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        }))
-        .sort((a, b) => (b.plays || 0) - (a.plays || 0))
-        .slice(0, 5);
-      setTopTracks(tracks);
+        }));
+        setTopTracks(tracks);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching top tracks:', error);
+        setLoading(false);
+      }
+    }, (error) => {
+      console.error('Top tracks subscription error:', error);
       setLoading(false);
     });
 
@@ -210,7 +223,7 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <div className="text-sm text-gray-400">
-                  {new Date(track.createdAt?.toDate()).toLocaleDateString()}
+                  {new Date(track.createdAt).toLocaleDateString()}
                 </div>
               </div>
             ))}
@@ -238,7 +251,7 @@ const Dashboard = () => {
                   />
                   <div>
                     <h3 className="font-medium">{track.title}</h3>
-                    <p className="text-sm text-gray-400">{track.plays || 0} plays</p>
+                    <p className="text-sm text-gray-400">{track.playCount || 0} plays</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-gray-400">
