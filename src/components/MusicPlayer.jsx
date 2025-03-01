@@ -225,6 +225,38 @@ const MusicPlayer = () => {
 
       {/* Player Controls */}
       <div className="container mx-auto px-4 py-4">
+        {/* Floating Progress Circle */}
+        {state.currentSong && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            className="fixed bottom-48 right-8 w-16 h-16 -m-2 z-[55]"
+          >
+            <svg className="w-full h-full" viewBox="0 0 100 100">
+              <circle
+                cx="50"
+                cy="50"
+                r="45"
+                fill="none"
+                stroke="rgba(255,255,255,0.1)"
+                strokeWidth="6"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="45"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="6"
+                strokeLinecap="round"
+                className="text-primary transform -rotate-90 origin-center"
+                strokeDasharray={`${(currentTime / duration) * 283} 283`}
+              />
+            </svg>
+          </motion.div>
+        )}
+
         {/* Floating Toggle Button */}
         <motion.button
           whileHover={{ scale: 1.1 }}
@@ -238,38 +270,6 @@ const MusicPlayer = () => {
             <UilAngleUp className="w-5 h-5 text-white" />
           )}
         </motion.button>
-
-        {/* Floating Progress Circle */}
-        {state.currentSong && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0 }}
-            className="fixed bottom-48 right-8 w-12 h-12 z-[55]"
-          >
-            <svg className="w-full h-full" viewBox="0 0 100 100">
-              <circle
-                cx="50"
-                cy="50"
-                r="45"
-                fill="none"
-                stroke="rgba(255,255,255,0.1)"
-                strokeWidth="8"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="45"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="8"
-                strokeLinecap="round"
-                className="text-primary transform -rotate-90 origin-center"
-                strokeDasharray={`${(currentTime / duration) * 283} 283`}
-              />
-            </svg>
-          </motion.div>
-        )}
 
         <motion.div
           initial={{ y: 100 }}

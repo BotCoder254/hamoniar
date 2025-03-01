@@ -11,7 +11,7 @@ const FloatingActionButton = () => {
 
   return (
     <motion.button
-      className="fixed bottom-24 right-8 w-14 h-14 bg-primary hover:bg-green-600 
+      className="fixed bottom-60 right-8 w-14 h-14 bg-primary hover:bg-green-600 
                  rounded-full shadow-lg flex items-center justify-center text-white text-2xl
                  focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
                  transition-colors duration-200 z-50"
