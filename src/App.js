@@ -7,11 +7,12 @@ import { useAuth } from './context/AuthContext';
 import { MusicProvider } from './context/MusicContext';
 import { ToastProvider } from './context/ToastContext';
 import { AchievementProvider } from './context/AchievementContext';
+import { UserProvider } from './context/UserContext';
 import { ProtectedRoute, PublicRoute } from './routes';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import LoadingSpinner from './components/Loading/LoadingSpinner';
 import Header from './components/Header';
-import Sidebar from './components/Sidebar';
+import Sidebar from './components/Sidebar/Sidebar';
 import MusicPlayer from './components/MusicPlayer';
 import FloatingActionButton from './components/FloatingActionButton';
 import AuthModal from './components/Auth/AuthModal';
@@ -64,47 +65,50 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <MusicProvider>
-          <ToastProvider>
-            <AchievementProvider>
-              <Router>
-                <MainLayout>
-                  <Routes>
-                    {/* Public Routes */}
-                    <Route 
-                      path="/login" 
-                      element={
-                        <PublicRoute>
-                          <AuthModal isOpen={true} />
-                        </PublicRoute>
-                      } 
-                    />
+        <UserProvider>
+          <MusicProvider>
+            <ToastProvider>
+              <AchievementProvider>
+                <Router>
+                  <MainLayout>
+                    <Routes>
+                      {/* Public Routes */}
+                      <Route 
+                        path="/login" 
+                        element={
+                          <PublicRoute>
+                            <AuthModal isOpen={true} />
+                          </PublicRoute>
+                        } 
+                      />
 
-                    {/* Protected Routes */}
-                    <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-                    <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
-                    <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
-                    <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
-                    <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                    <Route path="/activity" element={<ProtectedRoute><Activity /></ProtectedRoute>} />
-                    <Route 
-                      path="/trending" 
-                      element={
-                        <ProtectedRoute>
-                          <TrendingPage />
-                        </ProtectedRoute>
-                      } 
-                    />
+                      {/* Protected Routes */}
+                      <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                      <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
+                      <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
+                      <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+                      <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                      <Route path="/activity" element={<ProtectedRoute><Activity /></ProtectedRoute>} />
+                      <Route path="/following" element={<ProtectedRoute><Activity /></ProtectedRoute>} />
+                      <Route 
+                        path="/trending" 
+                        element={
+                          <ProtectedRoute>
+                            <TrendingPage />
+                          </ProtectedRoute>
+                        } 
+                      />
 
-                    {/* Fallback */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </MainLayout>
-              </Router>
-            </AchievementProvider>
-          </ToastProvider>
-        </MusicProvider>
+                      {/* Fallback */}
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </MainLayout>
+                </Router>
+              </AchievementProvider>
+            </ToastProvider>
+          </MusicProvider>
+        </UserProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
