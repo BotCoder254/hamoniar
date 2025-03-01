@@ -4,12 +4,13 @@ import { motion } from 'framer-motion';
 import { db } from '../../config/firebase.config';
 import { 
   collection, query, limit, orderBy, startAfter, 
-  onSnapshot, getDocs, where 
+  onSnapshot, getDocs, where, or, and
 } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import DefaultUserIcon from '../icons/DefaultUserIcon';
 import FollowButton from '../UserProfile/FollowButton';
 import { UilSearch } from '@iconscout/react-unicons';
+import { toast } from 'react-hot-toast';
 
 const SidebarUsers = () => {
   const [users, setUsers] = useState([]);
@@ -24,31 +25,57 @@ const SidebarUsers = () => {
   const searchTimeoutRef = useRef(null);
   const USERS_PER_PAGE = 5;
 
-  // Real-time users subscription
+  // Real-time users subscription with activity tracking
   useEffect(() => {
     if (!currentUser) return;
 
     const usersRef = collection(db, 'users');
     const q = query(
       usersRef,
-      orderBy('createdAt', 'desc'),
+      orderBy('lastActive', 'desc'),
       limit(USERS_PER_PAGE)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const usersData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(user => user.id !== currentUser?.uid);
-      
-      setUsers(usersData);
-      setLoading(false);
-      lastUserRef.current = snapshot.docs[snapshot.docs.length - 1];
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      try {
+        const usersData = await Promise.all(
+          snapshot.docs
+            .filter(doc => doc.id !== currentUser?.uid)
+            .map(async (doc) => {
+              const userData = { id: doc.id, ...doc.data() };
+              
+              // Fetch user's activity count
+              const activityRef = collection(db, 'activities');
+              const activityQuery = query(
+                activityRef,
+                where('userId', '==', doc.id),
+                where('type', 'in', ['upload', 'like', 'follow']),
+                orderBy('timestamp', 'desc'),
+                limit(1)
+              );
+              
+              const activitySnapshot = await getDocs(activityQuery);
+              if (!activitySnapshot.empty) {
+                userData.lastActivity = activitySnapshot.docs[0].data();
+              }
+              
+              return userData;
+            })
+        );
+        
+        setUsers(usersData);
+        setLoading(false);
+        lastUserRef.current = snapshot.docs[snapshot.docs.length - 1];
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        toast.error('Failed to load users');
+      }
     });
 
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Search functionality
+  // Enhanced search functionality
   const handleSearch = async (value) => {
     setSearchQuery(value);
     if (searchTimeoutRef.current) {
@@ -66,21 +93,52 @@ const SidebarUsers = () => {
       try {
         const usersRef = collection(db, 'users');
         const searchLower = value.toLowerCase();
+        
+        // Search by displayName, username, or email
         const q = query(
           usersRef,
-          where('displayNameLower', '>=', searchLower),
-          where('displayNameLower', '<=', searchLower + '\uf8ff'),
+          or(
+            and(
+              where('displayNameLower', '>=', searchLower),
+              where('displayNameLower', '<=', searchLower + '\uf8ff')
+            ),
+            and(
+              where('usernameLower', '>=', searchLower),
+              where('usernameLower', '<=', searchLower + '\uf8ff')
+            )
+          ),
           limit(10)
         );
 
         const snapshot = await getDocs(q);
-        const searchData = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(user => user.id !== currentUser?.uid);
+        const searchData = await Promise.all(
+          snapshot.docs
+            .filter(doc => doc.id !== currentUser?.uid)
+            .map(async (doc) => {
+              const userData = { id: doc.id, ...doc.data() };
+              
+              // Fetch user's latest activity
+              const activityRef = collection(db, 'activities');
+              const activityQuery = query(
+                activityRef,
+                where('userId', '==', doc.id),
+                orderBy('timestamp', 'desc'),
+                limit(1)
+              );
+              
+              const activitySnapshot = await getDocs(activityQuery);
+              if (!activitySnapshot.empty) {
+                userData.lastActivity = activitySnapshot.docs[0].data();
+              }
+              
+              return userData;
+            })
+        );
 
         setSearchResults(searchData);
       } catch (error) {
         console.error('Error searching users:', error);
+        toast.error('Search failed');
       } finally {
         setIsSearching(false);
       }
@@ -101,7 +159,7 @@ const SidebarUsers = () => {
     if (node) observerRef.current.observe(node);
   }, [loading, hasMore, isSearching]);
 
-  // Load more users function
+  // Load more users function with activity data
   const loadMoreUsers = async () => {
     if (!lastUserRef.current || !hasMore || isSearching) return;
 
@@ -110,7 +168,7 @@ const SidebarUsers = () => {
       const usersRef = collection(db, 'users');
       const q = query(
         usersRef,
-        orderBy('createdAt', 'desc'),
+        orderBy('lastActive', 'desc'),
         startAfter(lastUserRef.current),
         limit(USERS_PER_PAGE)
       );
@@ -122,14 +180,35 @@ const SidebarUsers = () => {
         return;
       }
 
-      const newUsers = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(user => user.id !== currentUser?.uid);
+      const newUsers = await Promise.all(
+        snapshot.docs
+          .filter(doc => doc.id !== currentUser?.uid)
+          .map(async (doc) => {
+            const userData = { id: doc.id, ...doc.data() };
+            
+            // Fetch user's activity
+            const activityRef = collection(db, 'activities');
+            const activityQuery = query(
+              activityRef,
+              where('userId', '==', doc.id),
+              orderBy('timestamp', 'desc'),
+              limit(1)
+            );
+            
+            const activitySnapshot = await getDocs(activityQuery);
+            if (!activitySnapshot.empty) {
+              userData.lastActivity = activitySnapshot.docs[0].data();
+            }
+            
+            return userData;
+          })
+      );
 
       setUsers(prevUsers => [...prevUsers, ...newUsers]);
       lastUserRef.current = snapshot.docs[snapshot.docs.length - 1];
     } catch (error) {
       console.error('Error loading more users:', error);
+      toast.error('Failed to load more users');
     } finally {
       setLoading(false);
     }
@@ -185,6 +264,13 @@ const SidebarUsers = () => {
                 <p className="text-sm font-medium text-white/90 truncate">
                   {user.displayName || 'Anonymous User'}
                 </p>
+                {user.lastActivity && (
+                  <p className="text-xs text-white/50 truncate">
+                    {user.lastActivity.type === 'upload' && 'Uploaded a track'}
+                    {user.lastActivity.type === 'like' && 'Liked a track'}
+                    {user.lastActivity.type === 'follow' && 'Followed someone'}
+                  </p>
+                )}
               </div>
             </Link>
             <div className="opacity-0 group-hover:opacity-100 transition-opacity">
