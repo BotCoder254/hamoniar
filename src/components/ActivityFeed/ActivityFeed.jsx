@@ -71,7 +71,7 @@ const ActivityItem = ({ activity, onMarkRead, onDelete, isSelected, onSelect }) 
         <input
           type="checkbox"
           checked={isSelected}
-          onChange={(e) => onSelect(e.target.checked)}
+          onChange={(e) => onSelect(activity.id, e.target.checked)}
           className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
         />
       </div>
@@ -183,7 +183,7 @@ const ActivityFeed = () => {
     const selectedIds = Array.from(selectedActivities);
 
     try {
-      selectedIds.forEach(id => {
+      for (const id of selectedIds) {
         const activityRef = doc(db, 'activities', id);
         if (action === 'read') {
           batch.update(activityRef, {
@@ -193,7 +193,7 @@ const ActivityFeed = () => {
         } else if (action === 'delete') {
           batch.delete(activityRef);
         }
-      });
+      }
 
       await batch.commit();
       setSelectedActivities(new Set());

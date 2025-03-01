@@ -15,18 +15,33 @@ import { formatDistanceToNow } from 'date-fns';
 import EmojiPicker from 'emoji-picker-react';
 import { toast } from 'react-hot-toast';
 
-const CommentItem = ({ comment, onDelete, currentUserId }) => {
-  const [showOptions, setShowOptions] = useState(false);
+const CommentItem = ({ comment, onDelete }) => {
+  const [showReplies, setShowReplies] = useState(false);
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const { currentUser } = useAuth();
 
-  const getFormattedTime = (timestamp) => {
-    if (!timestamp) return 'Just now';
+  const handleReply = async (e) => {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+
     try {
-      if (timestamp.toDate) {
-        return formatDistanceToNow(timestamp.toDate(), { addSuffix: true });
-      }
-      return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+      const replyData = {
+        text: replyText,
+        userId: currentUser.uid,
+        userName: currentUser.displayName,
+        userPhotoURL: currentUser.photoURL,
+        parentId: comment.id,
+        timestamp: serverTimestamp(),
+      };
+
+      await addDoc(collection(db, 'comments'), replyData);
+      setReplyText('');
+      setIsReplying(false);
+      toast.success('Reply added successfully');
     } catch (error) {
-      return 'Just now';
+      console.error('Error adding reply:', error);
+      toast.error('Failed to add reply');
     }
   };
 
@@ -35,61 +50,104 @@ const CommentItem = ({ comment, onDelete, currentUserId }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex space-x-3 p-4 bg-dark/50 rounded-lg group"
+      className="bg-dark/50 rounded-lg p-4 space-y-4"
     >
-      <img
-        src={comment.userPhotoURL || '/default-avatar.png'}
-        alt={comment.userName}
-        className="w-8 h-8 rounded-full"
-      />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between">
-          <div>
-            <span className="font-medium text-sm text-white">{comment.userName}</span>
-            <p className="text-sm mt-1 text-white/90">{comment.text}</p>
+      <div className="flex items-start space-x-4">
+        <img
+          src={comment.userPhotoURL || '/default-avatar.png'}
+          alt={comment.userName}
+          className="w-10 h-10 rounded-full"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium">{comment.userName}</h4>
+            <span className="text-sm text-lightest">
+              {formatDistanceToNow(comment.timestamp?.toDate() || new Date(), { addSuffix: true })}
+            </span>
           </div>
-          <div className="relative">
-            {currentUserId === comment.userId && (
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setShowOptions(!showOptions)}
-                className="p-1 hover:bg-light/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+          <p className="text-lightest mt-1">{comment.text}</p>
+          
+          <div className="flex items-center space-x-4 mt-2">
+            <button
+              onClick={() => setIsReplying(!isReplying)}
+              className="text-sm text-primary hover:text-primary/80"
+            >
+              Reply
+            </button>
+            {comment.replies?.length > 0 && (
+              <button
+                onClick={() => setShowReplies(!showReplies)}
+                className="text-sm text-lightest hover:text-white"
               >
-                <UilEllipsisH className="w-4 h-4 text-lightest" />
-              </motion.button>
+                {showReplies ? 'Hide' : 'Show'} {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
+              </button>
             )}
-            <AnimatePresence>
-              {showOptions && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="absolute right-0 mt-2 w-32 bg-dark rounded-lg shadow-xl z-10"
-                >
-                  <motion.button
-                    whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
-                    onClick={() => {
-                      onDelete(comment.id);
-                      setShowOptions(false);
-                    }}
-                    className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-500"
-                  >
-                    <UilTrashAlt className="w-4 h-4" />
-                    <span>Delete</span>
-                  </motion.button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {currentUser?.uid === comment.userId && (
+              <button
+                onClick={() => onDelete(comment.id)}
+                className="text-sm text-red-500 hover:text-red-400"
+              >
+                Delete
+              </button>
+            )}
           </div>
-        </div>
-        <div className="flex items-center space-x-2 mt-1">
-          <UilClock className="w-3 h-3 text-white/70" />
-          <span className="text-xs text-white/70">
-            {getFormattedTime(comment.timestamp)}
-          </span>
         </div>
       </div>
+
+      {/* Reply Form */}
+      <AnimatePresence>
+        {isReplying && (
+          <motion.form
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            onSubmit={handleReply}
+            className="mt-4 pl-14"
+          >
+            <textarea
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Write a reply..."
+              className="w-full bg-light/20 rounded-lg p-3 min-h-[100px] resize-none"
+            />
+            <div className="flex justify-end space-x-2 mt-2">
+              <button
+                type="button"
+                onClick={() => setIsReplying(false)}
+                className="px-4 py-2 text-sm hover:bg-light/20 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm bg-primary hover:bg-primary/90 rounded-lg"
+              >
+                Reply
+              </button>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
+
+      {/* Nested Replies */}
+      <AnimatePresence>
+        {showReplies && comment.replies && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="pl-14 space-y-4"
+          >
+            {comment.replies.map((reply) => (
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                onDelete={onDelete}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
@@ -297,7 +355,6 @@ const Comments = ({ trackId }) => {
                       key={comment.id}
                       comment={comment}
                       onDelete={handleDelete}
-                      currentUserId={currentUser?.uid}
                     />
                   ))}
                 </AnimatePresence>

@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { storage, db } from '../../config/firebase.config';
 import { 
   doc, getDoc, updateDoc, collection, 
-  query, where, getDocs, orderBy, limit 
+  query, where, getDocs, orderBy, limit, onSnapshot
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { formatDistanceToNow } from 'date-fns';
@@ -271,30 +271,36 @@ const UserProfile = () => {
           setUser({ id: userDoc.id, ...userDoc.data() });
         }
 
-        // Fetch uploaded tracks
+        // Real-time listener for uploaded tracks
         const uploadsQuery = query(
           collection(db, 'music'),
           where('uploadedBy', '==', userId || currentUser.uid),
           orderBy('uploadedAt', 'desc')
         );
-        const uploadedDocs = await getDocs(uploadsQuery);
-        setUploadedTracks(uploadedDocs.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })));
+        const unsubscribeUploads = onSnapshot(uploadsQuery, (snapshot) => {
+          setUploadedTracks(snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })));
+        });
 
-        // Fetch liked tracks
+        // Real-time listener for liked tracks
         const likedQuery = query(
           collection(db, 'music'),
           where('likes', 'array-contains', userId || currentUser.uid)
         );
-        const likedDocs = await getDocs(likedQuery);
-        setLikedTracks(likedDocs.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })));
+        const unsubscribeLikes = onSnapshot(likedQuery, (snapshot) => {
+          setLikedTracks(snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })));
+        });
 
         setLoading(false);
+        return () => {
+          unsubscribeUploads();
+          unsubscribeLikes();
+        };
       } catch (error) {
         console.error('Error fetching user data:', error);
         setLoading(false);
