@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   UilSearch, UilBell, UilUserCircle, UilSetting,
-  UilAngleLeft, UilAngleRight, UilCloudUpload 
+  UilAngleLeft, UilAngleRight, UilCloudUpload, UilSignout
 } from '@iconscout/react-unicons';
 import { useAuth } from '../context/AuthContext';
 import { useUser } from '../context/UserContext';
@@ -97,9 +97,10 @@ const Header = () => {
               <span className="text-sm font-medium">{userProfile?.displayName || currentUser.displayName}</span>
               <button
                 onClick={handleLogout}
-                className="text-sm text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="flex items-center space-x-1 text-sm text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400"
               >
-                Logout
+                <UilSignout className="w-5 h-5" />
+                <span>Logout</span>
               </button>
             </motion.div>
           ) : (

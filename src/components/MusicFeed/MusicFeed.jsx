@@ -119,7 +119,7 @@ const MusicCard = ({ track, onPlay }) => {
           />
         ) : (
           <div className="w-full h-full bg-dark flex items-center justify-center">
-            <DefaultAlbumIcon className="w-24 h-24 text-white" />
+            <DefaultAlbumIcon className="w-32 h-32 text-white opacity-50" />
           </div>
         )}
         <AnimatePresence>

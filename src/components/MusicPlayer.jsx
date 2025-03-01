@@ -334,9 +334,9 @@ const MusicPlayer = () => {
                       className={`object-cover rounded-lg shadow-lg ${isMinimized ? 'w-12 h-12' : 'w-16 h-16'}`}
                     />
                   ) : (
-                    <div className={`bg-light rounded-lg shadow-lg flex items-center justify-center
+                    <div className={`bg-dark rounded-lg shadow-lg flex items-center justify-center
                                   ${isMinimized ? 'w-12 h-12' : 'w-16 h-16'}`}>
-                      <DefaultAlbumIcon className={isMinimized ? 'w-8 h-8' : 'w-10 h-10'} />
+                      <DefaultAlbumIcon className={`${isMinimized ? 'w-8 h-8' : 'w-10 h-10'} text-white opacity-50`} />
                     </div>
                   )}
                   {!isMinimized && (
