@@ -24,8 +24,6 @@ const Upload = React.lazy(() => import('./pages/Upload'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Activity = React.lazy(() => import('./pages/Activity'));
-const Following = React.lazy(() => import('./pages/Following'));
-const Settings = React.lazy(() => import('./pages/Settings'));
 const TrendingPage = React.lazy(() => import('./pages/TrendingPage'));
 
 // Components
@@ -46,9 +44,9 @@ const MainLayout = ({ children }) => {
       className="flex min-h-screen bg-gradient-to-b from-dark to-black"
     >
       {currentUser && <Sidebar />}
-      <div className={`flex-1 ${currentUser ? 'ml-64' : ''}`}>
+      <div className={`flex-1 flex flex-col ${currentUser ? 'ml-64' : ''}`}>
         <Header />
-        <main className="px-8 py-6">
+        <main className="flex-1 px-8 py-6 overflow-y-auto pb-24">
           <ErrorBoundary>
             <Suspense fallback={<LoadingFallback />}>
               {children}
@@ -56,8 +54,8 @@ const MainLayout = ({ children }) => {
           </ErrorBoundary>
         </main>
         {currentUser && <FloatingActionButton />}
+        {currentUser && <MusicPlayer />}
       </div>
-      {currentUser && <MusicPlayer />}
     </motion.div>
   );
 };
@@ -90,8 +88,6 @@ function App() {
                     <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                     <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                     <Route path="/activity" element={<ProtectedRoute><Activity /></ProtectedRoute>} />
-                    <Route path="/following" element={<ProtectedRoute><Following /></ProtectedRoute>} />
-                    <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                     <Route 
                       path="/trending" 
                       element={

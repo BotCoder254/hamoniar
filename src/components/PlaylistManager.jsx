@@ -4,28 +4,62 @@ import {
   UilPlus, UilTrashAlt, UilEdit, UilSave 
 } from '@iconscout/react-unicons';
 import { useMusic } from '../context/MusicContext';
+import { useAuth } from '../context/AuthContext';
+import { db } from '../config/firebase.config';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { toast } from 'react-hot-toast';
 
 const PlaylistManager = () => {
-  const { state, dispatch } = useMusic();
+  const { state, dispatch, handleDeletePlaylist: deletePlaylist } = useMusic();
+  const { currentUser } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [editingId, setEditingId] = useState(null);
   const fileInputRef = useRef(null);
 
-  const handleCreatePlaylist = () => {
-    if (!newPlaylistName.trim()) return;
+  const handleCreatePlaylist = async () => {
+    if (!newPlaylistName.trim() || !currentUser) return;
 
-    dispatch({
-      type: 'CREATE_PLAYLIST',
-      payload: {
-        id: Date.now(),
+    try {
+      const docRef = await addDoc(collection(db, 'playlists'), {
         name: newPlaylistName,
-        songs: []
-      }
-    });
+        userId: currentUser.uid,
+        songs: [],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
 
-    setNewPlaylistName('');
-    setIsCreating(false);
+      dispatch({
+        type: 'CREATE_PLAYLIST',
+        payload: {
+          id: docRef.id,
+          name: newPlaylistName,
+          songs: [],
+          userId: currentUser.uid
+        }
+      });
+
+      setNewPlaylistName('');
+      setIsCreating(false);
+      toast.success('Playlist created successfully!');
+    } catch (error) {
+      console.error('Error creating playlist:', error);
+      toast.error('Failed to create playlist');
+    }
+  };
+
+  const onDeletePlaylist = async (playlistId) => {
+    try {
+      await deletePlaylist(playlistId);
+      dispatch({
+        type: 'DELETE_PLAYLIST',
+        payload: playlistId
+      });
+      toast.success('Playlist deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting playlist:', error);
+      toast.error('Failed to delete playlist');
+    }
   };
 
   const handleSavePlaylist = (playlist) => {
@@ -148,10 +182,7 @@ const PlaylistManager = () => {
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => dispatch({
-                  type: 'DELETE_PLAYLIST',
-                  payload: playlist.id
-                })}
+                onClick={() => onDeletePlaylist(playlist.id)}
                 className="p-2 hover:bg-gray-700 rounded-full text-red-500"
               >
                 <UilTrashAlt className="w-4 h-4" />

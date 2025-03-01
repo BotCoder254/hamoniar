@@ -3,7 +3,7 @@ import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { BADGES, checkBadgeEligibility } from '../config/badges';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { db } from '../config/firebase.config';
 import BadgeNotification from '../components/Badges/BadgeNotification';
 
 const AchievementContext = createContext();
@@ -60,72 +60,49 @@ export const AchievementProvider = ({ children }) => {
     
     if (badgesDoc.exists()) {
       setEarnedBadges(badgesDoc.data().badges || []);
-    } else {
-      await setDoc(badgesRef, { badges: [] });
-      setEarnedBadges([]);
     }
   };
 
   const updateUserStats = async (newStats) => {
-    if (!currentUser?.uid || !userStats) return;
+    if (!currentUser?.uid) return;
 
-    const updatedStats = {
-      ...userStats,
-      ...newStats,
-      lastUpdated: new Date().toISOString()
-    };
+    try {
+      const statsRef = doc(db, 'userStats', currentUser.uid);
+      await updateDoc(statsRef, {
+        ...newStats,
+        lastUpdated: new Date().toISOString()
+      });
 
-    const statsRef = doc(db, 'userStats', currentUser.uid);
-    await updateDoc(statsRef, updatedStats);
-    setUserStats(updatedStats);
-
-    // Check for new badges
-    checkForNewBadges(updatedStats);
-  };
-
-  const checkForNewBadges = async (stats) => {
-    const allBadges = Object.values(BADGES);
-    const newEarnedBadges = [];
-
-    for (const badge of allBadges) {
-      if (!earnedBadges.includes(badge.id) && checkBadgeEligibility(badge, stats)) {
-        newEarnedBadges.push(badge.id);
-        // Show notification for the first new badge
-        if (!newBadge) {
-          setNewBadge(badge);
-          setShowNotification(true);
-          success(`New Badge Earned: ${badge.name}!`);
-        }
+      // Check for new badges
+      const updatedStats = { ...userStats, ...newStats };
+      const newEarnedBadge = checkBadgeEligibility(updatedStats, earnedBadges);
+      
+      if (newEarnedBadge) {
+        const badgesRef = doc(db, 'userBadges', currentUser.uid);
+        await updateDoc(badgesRef, {
+          badges: [...earnedBadges, newEarnedBadge]
+        });
+        
+        setNewBadge(newEarnedBadge);
+        setShowNotification(true);
+        success(`New badge earned: ${newEarnedBadge.name}!`);
       }
+
+      setUserStats(updatedStats);
+    } catch (error) {
+      console.error('Error updating user stats:', error);
     }
-
-    if (newEarnedBadges.length > 0) {
-      const badgesRef = doc(db, 'userBadges', currentUser.uid);
-      const updatedBadges = [...earnedBadges, ...newEarnedBadges];
-      await updateDoc(badgesRef, { badges: updatedBadges });
-      setEarnedBadges(updatedBadges);
-    }
-  };
-
-  const closeNotification = () => {
-    setShowNotification(false);
-    setNewBadge(null);
-  };
-
-  const value = {
-    userStats,
-    earnedBadges,
-    updateUserStats,
   };
 
   return (
-    <AchievementContext.Provider value={value}>
+    <AchievementContext.Provider value={{ userStats, earnedBadges, updateUserStats }}>
       {children}
-      <BadgeNotification
-        badge={newBadge}
-        isVisible={showNotification}
-        onClose={closeNotification}
-      />
+      {showNotification && newBadge && (
+        <BadgeNotification
+          badge={newBadge}
+          onClose={() => setShowNotification(false)}
+        />
+      )}
     </AchievementContext.Provider>
   );
 };

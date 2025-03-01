@@ -9,14 +9,25 @@ export const initializeMediaSession = (controls) => {
 };
 
 export const updateMediaMetadata = (track) => {
-  if ('mediaSession' in navigator) {
+  if (!track || !('mediaSession' in navigator)) return;
+
+  try {
+    const defaultCover = '/default-cover.jpg';
+    const artwork = [
+      {
+        src: track.coverUrl || defaultCover,
+        sizes: '512x512',
+        type: 'image/jpeg'
+      }
+    ];
+
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: track.title,
-      artist: track.artist,
-      album: track.album,
-      artwork: [
-        { src: track.albumArt, sizes: '512x512', type: 'image/jpeg' },
-      ],
+      title: track.title || 'Unknown Title',
+      artist: track.artist || 'Unknown Artist',
+      album: track.album || '',
+      artwork
     });
+  } catch (error) {
+    console.error('Error updating media metadata:', error);
   }
 }; 

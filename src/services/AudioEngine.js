@@ -69,28 +69,29 @@ class AudioEngine {
   }
 
   loadTrack(track) {
-    if (this.howl) {
-      this.howl.unload();
+    if (!track || !track.audioUrl) {
+      console.warn('Invalid track or missing audio URL');
+      return null;
     }
 
-    this.howl = new Howl({
-      src: [track.url],
-      html5: true,
-      format: ['mp3', 'wav'],
-      onload: () => {
-        if (this.howl._sounds[0] && this.howl._sounds[0]._node) {
-          try {
-            const audioElement = this.howl._sounds[0]._node;
-            const source = this.audioContext.createMediaElementSource(audioElement);
-            this.equalizer.connect(source);
-          } catch (error) {
-            console.error('Error connecting audio to effects chain:', error);
-          }
-        }
-      },
-    });
+    try {
+      // Unload previous track if exists
+      if (this.howl) {
+        this.howl.unload();
+      }
 
-    return this.howl;
+      this.howl = new Howl({
+        src: [track.audioUrl],
+        html5: true,
+        preload: true,
+        format: ['mp3', 'wav', 'ogg', 'm4a']
+      });
+
+      return this.howl;
+    } catch (error) {
+      console.error('Error loading track:', error);
+      return null;
+    }
   }
 
   setEQ(low, mid, high) {

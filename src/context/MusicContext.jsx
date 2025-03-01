@@ -1,26 +1,36 @@
-import React, { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { db } from '../config/firebase.config';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { 
+  collection, addDoc, serverTimestamp, doc, 
+  deleteDoc, onSnapshot, query, orderBy, 
+  getDocs, limit, updateDoc, increment 
+} from 'firebase/firestore';
 import AudioEngine from '../services/AudioEngine';
 import { updateMediaMetadata } from '../services/MediaSession';
+import { useAuth } from './AuthContext';
 
 const MusicContext = createContext();
 
 const initialState = {
   currentSong: null,
   playlist: [],
-  queue: [],
-  isShuffled: false,
-  repeatMode: 'none',
-  playHistory: [],
-  volume: 1,
   isPlaying: false,
+  volume: 1,
+  currentTime: 0,
+  duration: 0,
+  repeat: 'none', // none, one, all
+  shuffle: false,
+  queue: [],
+  history: [],
   playlists: [],
   userPreferences: {
     preferredGenres: [],
     theme: 'dark',
     visualizerEnabled: true,
-  }
+  },
+  trendingArtists: [],
+  trendingGenres: [],
+  currentTrack: null,
 };
 
 async function trackActivity(type, data) {
@@ -35,26 +45,27 @@ async function trackActivity(type, data) {
   }
 }
 
-function musicReducer(state, action) {
+const musicReducer = (state, action) => {
   switch (action.type) {
     case 'SET_CURRENT_SONG':
       if (state.currentSong?.howl) {
         state.currentSong.howl.unload();
       }
-      const howl = AudioEngine.loadTrack(action.payload);
+      const howl = action.payload ? AudioEngine.loadTrack(action.payload) : null;
       updateMediaMetadata(action.payload);
       
-      // Track play activity
-      trackActivity('play', {
-        trackId: action.payload.id,
-        trackName: action.payload.title,
-        artistName: action.payload.artist
-      });
+      if (action.payload) {
+        trackActivity('play', {
+          trackId: action.payload.id,
+          trackName: action.payload.title,
+          artistName: action.payload.artist
+        });
+      }
 
       return { 
         ...state, 
-        currentSong: { ...action.payload, howl },
-        isPlaying: true 
+        currentSong: action.payload ? { ...action.payload, howl } : null,
+        isPlaying: action.payload !== null 
       };
 
     case 'TOGGLE_LIKE':
@@ -90,6 +101,26 @@ function musicReducer(state, action) {
         playlists: [...state.playlists, action.payload]
       };
 
+    case 'DELETE_PLAYLIST':
+      try {
+        deleteDoc(doc(db, 'playlists', action.payload));
+        trackActivity('playlist_delete', {
+          playlistId: action.payload
+        });
+      } catch (error) {
+        console.error('Error deleting playlist:', error);
+      }
+      return {
+        ...state,
+        playlists: state.playlists.filter(playlist => playlist.id !== action.payload)
+      };
+
+    case 'SET_PLAYLISTS':
+      return {
+        ...state,
+        playlists: action.payload
+      };
+
     case 'UPDATE_PREFERENCES':
       return {
         ...state,
@@ -99,22 +130,230 @@ function musicReducer(state, action) {
         }
       };
 
-    // Add other cases as needed...
+    case 'RENAME_PLAYLIST':
+      return {
+        ...state,
+        playlists: state.playlists.map(playlist =>
+          playlist.id === action.payload.id
+            ? { ...playlist, name: action.payload.name }
+            : playlist
+        )
+      };
+
+    case 'SET_TRENDING_ARTISTS':
+      return {
+        ...state,
+        trendingArtists: action.payload
+      };
+
+    case 'SET_TRENDING_GENRES':
+      return {
+        ...state,
+        trendingGenres: action.payload
+      };
+
+    case 'SET_CURRENT_TRACK':
+      return {
+        ...state,
+        currentTrack: action.payload,
+        isPlaying: true
+      };
+
+    case 'TOGGLE_PLAY':
+      return {
+        ...state,
+        isPlaying: action.payload !== undefined ? action.payload : !state.isPlaying
+      };
+
+    case 'SET_VOLUME':
+      return {
+        ...state,
+        volume: action.payload
+      };
+
+    case 'SET_CURRENT_TIME':
+      return {
+        ...state,
+        currentTime: action.payload
+      };
+
+    case 'SET_DURATION':
+      return {
+        ...state,
+        duration: action.payload
+      };
+
+    case 'TOGGLE_REPEAT':
+      const repeatStates = ['none', 'one', 'all'];
+      const repeatIndex = repeatStates.indexOf(state.repeat);
+      const nextIndex = (repeatIndex + 1) % repeatStates.length;
+      return {
+        ...state,
+        repeat: repeatStates[nextIndex]
+      };
+
+    case 'TOGGLE_SHUFFLE':
+      return {
+        ...state,
+        shuffle: !state.shuffle,
+        queue: !state.shuffle ? 
+          [...state.playlist].sort(() => Math.random() - 0.5) : 
+          [...state.playlist]
+      };
+
+    case 'NEXT_TRACK':
+      if (state.queue.length === 0) return state;
+      const trackIndex = state.queue.findIndex(track => track.id === state.currentSong?.id);
+      const nextTrack = state.queue[(trackIndex + 1) % state.queue.length];
+      return {
+        ...state,
+        currentSong: nextTrack,
+        isPlaying: true,
+        history: [...state.history, state.currentSong].filter(Boolean)
+      };
+
+    case 'PREVIOUS_TRACK':
+      if (state.history.length === 0) return state;
+      const prevTrack = state.history[state.history.length - 1];
+      return {
+        ...state,
+        currentSong: prevTrack,
+        isPlaying: true,
+        history: state.history.slice(0, -1)
+      };
+
+    case 'UPDATE_PLAY_COUNT':
+      if (!state.currentSong) return state;
+      try {
+        const trackRef = doc(db, 'tracks', state.currentSong.id);
+        updateDoc(trackRef, {
+          plays: increment(1)
+        });
+      } catch (error) {
+        console.error('Error updating play count:', error);
+      }
+      return state;
 
     default:
       return state;
   }
-}
+};
 
-export function MusicProvider({ children }) {
+export const MusicProvider = ({ children }) => {
   const [state, dispatch] = useReducer(musicReducer, initialState);
+  const { currentUser } = useAuth();
+
+  // Subscribe to playlists
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const q = query(
+      collection(db, 'playlists'),
+      orderBy('updatedAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const playlists = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .filter(playlist => playlist.userId === currentUser.uid);
+      dispatch({ type: 'SET_PLAYLISTS', payload: playlists });
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  // Subscribe to trending artists
+  useEffect(() => {
+    const fetchTrendingArtists = async () => {
+      const q = query(
+        collection(db, 'artists'),
+        orderBy('playCount', 'desc'),
+        limit(10)
+      );
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const artists = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        dispatch({ type: 'SET_TRENDING_ARTISTS', payload: artists });
+      });
+
+      return () => unsubscribe();
+    };
+
+    fetchTrendingArtists();
+  }, []);
+
+  // Subscribe to trending genres
+  useEffect(() => {
+    const fetchTrendingGenres = async () => {
+      const q = query(
+        collection(db, 'genres'),
+        orderBy('trackCount', 'desc'),
+        limit(10)
+      );
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const genres = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        dispatch({ type: 'SET_TRENDING_GENRES', payload: genres });
+      });
+
+      return () => unsubscribe();
+    };
+
+    fetchTrendingGenres();
+  }, []);
+
+  // Handle playlist deletion
+  const handleDeletePlaylist = async (playlistId) => {
+    try {
+      await deleteDoc(doc(db, 'playlists', playlistId));
+    } catch (error) {
+      console.error('Error deleting playlist:', error);
+      throw error;
+    }
+  };
+
+  // Handle track end
+  useEffect(() => {
+    if (!state.currentSong) return;
+
+    const handleTrackEnd = () => {
+      if (state.repeat === 'one') {
+        // Replay the current track
+        dispatch({ type: 'SET_CURRENT_TIME', payload: 0 });
+        dispatch({ type: 'TOGGLE_PLAY', payload: true });
+      } else if (state.repeat === 'all' || state.queue.length > 0) {
+        // Play next track
+        dispatch({ type: 'NEXT_TRACK' });
+      } else {
+        // Stop playing
+        dispatch({ type: 'SET_CURRENT_SONG', payload: null });
+      }
+      // Update play count
+      dispatch({ type: 'UPDATE_PLAY_COUNT' });
+    };
+
+    const audio = document.querySelector('audio');
+    if (audio) {
+      audio.addEventListener('ended', handleTrackEnd);
+      return () => audio.removeEventListener('ended', handleTrackEnd);
+    }
+  }, [state.currentSong, state.repeat, state.queue]);
 
   return (
-    <MusicContext.Provider value={{ state, dispatch }}>
+    <MusicContext.Provider value={{ state, dispatch, handleDeletePlaylist }}>
       {children}
     </MusicContext.Provider>
   );
-}
+};
 
 export const useMusic = () => {
   const context = useContext(MusicContext);
