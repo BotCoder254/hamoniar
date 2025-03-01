@@ -115,55 +115,54 @@ const ActivityFeed = () => {
   useEffect(() => {
     if (!currentUser || !followedUsers.length) return;
 
-    try {
-      // Build query based on filter
-      let activitiesQuery = query(
-        collection(db, 'activities'),
-        where('userId', 'in', followedUsers),
-        orderBy('timestamp', 'desc'),
-        limit(50)
-      );
+    const q = query(
+      collection(db, 'activities'),
+      where('userId', 'in', followedUsers),
+      orderBy('timestamp', 'desc')
+    );
 
-      // Add type filter if not 'all'
-      if (filter !== 'all') {
-        activitiesQuery = query(
-          collection(db, 'activities'),
-          where('userId', 'in', followedUsers),
-          where('type', '==', filter),
-          orderBy('timestamp', 'desc'),
-          limit(50)
-        );
-      }
-
-      const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-        const newActivities = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          timestamp: doc.data().timestamp?.toDate() || new Date() // Provide fallback date
-        }));
-        setActivities(newActivities);
-        setLoading(false);
-      }, (error) => {
-        console.error('Error fetching activities:', error);
-        setLoading(false);
-        setActivities([]); // Reset activities on error
-      });
-
-      return () => unsubscribe();
-    } catch (error) {
-      console.error('Error setting up activity listener:', error);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const activityList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setActivities(activityList);
       setLoading(false);
-      setActivities([]); // Reset activities on error
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, followedUsers]);
+
+  const getActivityMessage = (activity) => {
+    switch (activity.type) {
+      case 'upload':
+        return `uploaded "${activity.trackName}"`;
+      case 'like':
+        return `liked "${activity.trackName}"`;
+      case 'comment':
+        return `commented: "${activity.commentText}"`;
+      case 'playlist':
+        return `added "${activity.trackName}" to ${activity.playlistName}`;
+      case 'follow':
+        return `started following ${activity.targetUserName}`;
+      case 'unlike':
+        return `unliked "${activity.trackName}"`;
+      default:
+        return activity.message || 'performed an action';
     }
-  }, [currentUser, followedUsers, filter]);
+  };
 
   const activityTypes = [
-    { id: 'all', label: 'All Activities' },
+    { id: 'all', label: 'All' },
     { id: 'upload', label: 'Uploads' },
     { id: 'like', label: 'Likes' },
-    { id: 'playlist', label: 'Playlists' },
-    { id: 'follow', label: 'Follows' }
+    { id: 'comment', label: 'Comments' },
+    { id: 'playlist', label: 'Playlists' }
   ];
+
+  const filteredActivities = activities.filter(activity => 
+    filter === 'all' ? true : activity.type === filter
+  );
 
   if (!currentUser) {
     return (
@@ -204,10 +203,16 @@ const ActivityFeed = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {activities.map(activity => (
-            <ActivityItem key={activity.id} activity={activity} />
+          {filteredActivities.map(activity => (
+            <ActivityItem
+              key={activity.id}
+              activity={{
+                ...activity,
+                text: getActivityMessage(activity)
+              }}
+            />
           ))}
-          {activities.length === 0 && (
+          {filteredActivities.length === 0 && (
             <div className="text-center py-12 bg-light/20 rounded-lg">
               <p className="text-lightest">No activities to show</p>
             </div>

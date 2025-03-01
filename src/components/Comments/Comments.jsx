@@ -12,9 +12,22 @@ import {
   where, limit 
 } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
+import EmojiPicker from 'emoji-picker-react';
 
 const CommentItem = ({ comment, onDelete, currentUserId }) => {
   const [showOptions, setShowOptions] = useState(false);
+
+  const getFormattedTime = (timestamp) => {
+    if (!timestamp) return 'Just now';
+    try {
+      if (timestamp.toDate) {
+        return formatDistanceToNow(timestamp.toDate(), { addSuffix: true });
+      }
+      return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+    } catch (error) {
+      return 'Just now';
+    }
+  };
 
   return (
     <motion.div
@@ -72,7 +85,7 @@ const CommentItem = ({ comment, onDelete, currentUserId }) => {
         <div className="flex items-center space-x-2 mt-1">
           <UilClock className="w-3 h-3 text-lightest" />
           <span className="text-xs text-lightest">
-            {formatDistanceToNow(comment.timestamp?.toDate(), { addSuffix: true })}
+            {getFormattedTime(comment.timestamp)}
           </span>
         </div>
       </div>
@@ -87,6 +100,7 @@ const Comments = ({ trackId }) => {
   const { currentUser } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   useEffect(() => {
     if (!trackId) return;
@@ -148,6 +162,11 @@ const Comments = ({ trackId }) => {
     }
   };
 
+  const onEmojiClick = (emojiData) => {
+    setNewComment(prev => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+  };
+
   return (
     <div className="mt-4">
       <button
@@ -183,14 +202,40 @@ const Comments = ({ trackId }) => {
                       className="w-full bg-light p-2 pr-20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        type="button"
-                        className="text-lightest hover:text-white"
-                      >
-                        <UilSmile className="w-5 h-5" />
-                      </motion.button>
+                      <div className="relative">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          type="button"
+                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                          className="text-lightest hover:text-white"
+                        >
+                          <UilSmile className="w-5 h-5" />
+                        </motion.button>
+                        <AnimatePresence>
+                          {showEmojiPicker && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              className="absolute bottom-full right-0 mb-2 z-50 bg-dark rounded-lg shadow-xl overflow-hidden"
+                              style={{ maxHeight: '400px' }}
+                            >
+                              <EmojiPicker
+                                onEmojiClick={onEmojiClick}
+                                disableAutoFocus
+                                native
+                                width={280}
+                                height={400}
+                                previewConfig={{ showPreview: false }}
+                                searchDisabled
+                                skinTonesDisabled
+                                theme="dark"
+                              />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
