@@ -47,16 +47,17 @@ const Dashboard = () => {
     const tracksRef = collection(db, 'tracks');
     const recentQuery = query(
       tracksRef,
-      where('userId', '==', currentUser.uid),
-      orderBy('createdAt', 'desc'),
-      limit(5)
+      where('userId', '==', currentUser.uid)
     );
 
     const unsubscribe = onSnapshot(recentQuery, (snapshot) => {
-      const tracks = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const tracks = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis())
+        .slice(0, 5);
       setRecentTracks(tracks);
     });
 
@@ -70,16 +71,17 @@ const Dashboard = () => {
     const tracksRef = collection(db, 'tracks');
     const topQuery = query(
       tracksRef,
-      where('userId', '==', currentUser.uid),
-      orderBy('plays', 'desc'),
-      limit(5)
+      where('userId', '==', currentUser.uid)
     );
 
     const unsubscribe = onSnapshot(topQuery, (snapshot) => {
-      const tracks = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const tracks = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .sort((a, b) => (b.plays || 0) - (a.plays || 0))
+        .slice(0, 5);
       setTopTracks(tracks);
       setLoading(false);
     });

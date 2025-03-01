@@ -126,43 +126,64 @@ const UserDashboard = () => {
         // Fetch recent activities
         const activitiesQuery = query(
           collection(db, 'activities'),
-          where('userId', '==', currentUser.uid),
-          orderBy('timestamp', 'desc'),
-          limit(5)
+          where('userId', '==', currentUser.uid)
         );
         const activitiesSnapshot = await getDocs(activitiesQuery);
-        setActivities(activitiesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })));
+        const activitiesList = activitiesSnapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          .sort((a, b) => b.timestamp?.toMillis() - a.timestamp?.toMillis())
+          .slice(0, 5);
+        setActivities(activitiesList);
 
         // Fetch top tracks
         const topTracksQuery = query(
           collection(db, 'music'),
-          where('uploadedBy', '==', currentUser.uid),
-          orderBy('plays', 'desc'),
-          limit(5)
+          where('uploadedBy', '==', currentUser.uid)
         );
         const topTracksSnapshot = await getDocs(topTracksQuery);
-        setTopTracks(topTracksSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })));
+        const topTracksList = topTracksSnapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          .sort((a, b) => (b.plays || 0) - (a.plays || 0))
+          .slice(0, 5);
+        setTopTracks(topTracksList);
 
         // Fetch personalized recommendations
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         const userGenres = userDoc.data()?.preferredGenres || [];
         
-        const recommendationsQuery = query(
-          collection(db, 'music'),
-          where('genre', 'in', userGenres.length ? userGenres : ['pop']), // fallback genre
-          limit(5)
-        );
-        const recommendationsSnapshot = await getDocs(recommendationsQuery);
-        setRecommendations(recommendationsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })));
+        if (userGenres.length > 0) {
+          const recommendationsQuery = query(
+            collection(db, 'music'),
+            where('genre', 'in', userGenres.slice(0, 10))
+          );
+          const recommendationsSnapshot = await getDocs(recommendationsQuery);
+          const recommendationsList = recommendationsSnapshot.docs
+            .map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }))
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 5);
+          setRecommendations(recommendationsList);
+        } else {
+          // Fallback: fetch random tracks if no preferred genres
+          const recommendationsQuery = query(collection(db, 'music'));
+          const recommendationsSnapshot = await getDocs(recommendationsQuery);
+          const recommendationsList = recommendationsSnapshot.docs
+            .map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }))
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 5);
+          setRecommendations(recommendationsList);
+        }
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
