@@ -170,48 +170,25 @@ export function UserProvider({ children }) {
     if (!currentUser) throw new Error('No user logged in');
     if (targetUserId === currentUser.uid) throw new Error('Cannot follow yourself');
 
-    const followRef = collection(db, 'followers');
-    await addDoc(followRef, {
-      followerId: currentUser.uid,
-      followingId: targetUserId,
-      timestamp: serverTimestamp()
-    });
+    try {
+      // Add follow relationship
+      const followRef = collection(db, 'followers');
+      await addDoc(followRef, {
+        followerId: currentUser.uid,
+        followingId: targetUserId,
+        timestamp: serverTimestamp()
+      });
 
-    // Update follower count
-    const targetUserRef = doc(db, 'users', targetUserId);
-    await updateDoc(targetUserRef, {
-      'stats.followers': increment(1)
-    });
-
-    // Add to activities
-    const activityRef = collection(db, 'activities');
-    await addDoc(activityRef, {
-      userId: currentUser.uid,
-      targetUserId,
-      type: 'FOLLOW',
-      timestamp: serverTimestamp()
-    });
-  };
-
-  // Unfollow user function
-  const unfollowUser = async (targetUserId) => {
-    if (!currentUser) throw new Error('No user logged in');
-
-    const followRef = collection(db, 'followers');
-    const q = query(
-      followRef,
-      where('followerId', '==', currentUser.uid),
-      where('followingId', '==', targetUserId)
-    );
-
-    const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
-      await deleteDoc(snapshot.docs[0].ref);
-
-      // Update follower count
+      // Update user stats
+      const userRef = doc(db, 'users', currentUser.uid);
       const targetUserRef = doc(db, 'users', targetUserId);
+
+      await updateDoc(userRef, {
+        'stats.following': increment(1)
+      });
+
       await updateDoc(targetUserRef, {
-        'stats.followers': increment(-1)
+        'stats.followers': increment(1)
       });
 
       // Add to activities
@@ -219,9 +196,83 @@ export function UserProvider({ children }) {
       await addDoc(activityRef, {
         userId: currentUser.uid,
         targetUserId,
-        type: 'UNFOLLOW',
+        type: 'FOLLOW',
         timestamp: serverTimestamp()
       });
+
+      return true;
+    } catch (error) {
+      console.error('Error following user:', error);
+      throw error;
+    }
+  };
+
+  // Unfollow user function
+  const unfollowUser = async (targetUserId) => {
+    if (!currentUser) throw new Error('No user logged in');
+    if (targetUserId === currentUser.uid) throw new Error('Cannot unfollow yourself');
+
+    try {
+      // Find and remove follow relationship
+      const followRef = collection(db, 'followers');
+      const q = query(
+        followRef,
+        where('followerId', '==', currentUser.uid),
+        where('followingId', '==', targetUserId)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const followDoc = querySnapshot.docs[0];
+
+      if (followDoc) {
+        await deleteDoc(followDoc.ref);
+
+        // Update user stats
+        const userRef = doc(db, 'users', currentUser.uid);
+        const targetUserRef = doc(db, 'users', targetUserId);
+
+        await updateDoc(userRef, {
+          'stats.following': increment(-1)
+        });
+
+        await updateDoc(targetUserRef, {
+          'stats.followers': increment(-1)
+        });
+
+        // Add to activities
+        const activityRef = collection(db, 'activities');
+        await addDoc(activityRef, {
+          userId: currentUser.uid,
+          targetUserId,
+          type: 'UNFOLLOW',
+          timestamp: serverTimestamp()
+        });
+
+        return true;
+      }
+    } catch (error) {
+      console.error('Error unfollowing user:', error);
+      throw error;
+    }
+  };
+
+  // Check if following a user
+  const isFollowing = async (targetUserId) => {
+    if (!currentUser) return false;
+    
+    try {
+      const followRef = collection(db, 'followers');
+      const q = query(
+        followRef,
+        where('followerId', '==', currentUser.uid),
+        where('followingId', '==', targetUserId)
+      );
+
+      const querySnapshot = await getDocs(q);
+      return !querySnapshot.empty;
+    } catch (error) {
+      console.error('Error checking follow status:', error);
+      return false;
     }
   };
 
@@ -257,6 +308,7 @@ export function UserProvider({ children }) {
     updateProfile,
     followUser,
     unfollowUser,
+    isFollowing,
     updatePreferences,
     getUserStats
   };

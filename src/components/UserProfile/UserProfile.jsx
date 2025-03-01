@@ -15,6 +15,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate, useParams } from 'react-router-dom';
 import DefaultUserIcon from '../icons/DefaultUserIcon';
+import FollowButton from '../FollowButton/FollowButton';
 
 const ProfileHeader = ({ user, isOwnProfile, onEdit, onImageUpload }) => (
   <div className="relative mb-8">
@@ -75,16 +76,20 @@ const ProfileHeader = ({ user, isOwnProfile, onEdit, onImageUpload }) => (
             <h1 className="text-3xl font-bold">{user.displayName}</h1>
             <p className="text-lightest text-white">{user.bio || 'No bio yet'}</p>
           </div>
-          {isOwnProfile && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={onEdit}
-              className="p-2 hover:bg-light/20 backdrop-blur-sm rounded-full"
-            >
-              <UilEdit className="w-6 h-6" />
-            </motion.button>
-          )}
+          <div className="flex items-center space-x-4">
+            {isOwnProfile ? (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onEdit}
+                className="p-2 hover:bg-light/20 backdrop-blur-sm rounded-full"
+              >
+                <UilEdit className="w-6 h-6" />
+              </motion.button>
+            ) : (
+              <FollowButton targetUserId={user.uid} />
+            )}
+          </div>
         </div>
 
         <div className="flex items-center space-x-4 mt-2 text-sm text-lightest">
