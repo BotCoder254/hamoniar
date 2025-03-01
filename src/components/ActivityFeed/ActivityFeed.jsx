@@ -136,15 +136,20 @@ const ActivityFeed = () => {
 
     const q = query(
       collection(db, 'activities'),
-      where('userId', '==', currentUser.uid),
-      orderBy('timestamp', 'desc')
+      where('userId', '==', currentUser.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const activityList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const activityList = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .sort((a, b) => {
+          const timestampA = a.timestamp?.toMillis() || 0;
+          const timestampB = b.timestamp?.toMillis() || 0;
+          return timestampB - timestampA;
+        });
       setActivities(activityList);
       setLoading(false);
     });
