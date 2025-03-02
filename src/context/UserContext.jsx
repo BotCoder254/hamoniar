@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { db } from '../config/firebase.config';
 import { 
@@ -15,7 +15,9 @@ import {
   getDocs,
   getDoc,
   addDoc,
-  deleteDoc
+  deleteDoc,
+  orderBy,
+  limit
 } from 'firebase/firestore';
 import { toast } from 'react-hot-toast';
 
@@ -31,8 +33,20 @@ export function UserProvider({ children }) {
   const [following, setFollowing] = useState([]);
   const [activities, setActivities] = useState([]);
   const [error, setError] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Real-time user profile updates
+  // Check for mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Optimized real-time user profile updates with simpler queries
   useEffect(() => {
     if (!initialized) return;
     if (!currentUser?.uid) {
@@ -42,101 +56,128 @@ export function UserProvider({ children }) {
     }
 
     const userRef = doc(db, 'users', currentUser.uid);
-    const unsubscribe = onSnapshot(userRef, (doc) => {
-      if (doc.exists()) {
-        setUserProfile(doc.data());
+    const unsubscribe = onSnapshot(
+      userRef,
+      (doc) => {
+        if (doc.exists()) {
+          setUserProfile(doc.data());
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error in user profile listener:", error);
+        setError(error);
+        setLoading(false);
       }
-      setLoading(false);
-    }, (error) => {
-      console.error("Error in user profile listener:", error);
-      setError(error);
-      setLoading(false);
-    });
+    );
 
     return () => unsubscribe();
   }, [currentUser, initialized]);
 
-  // Real-time followers updates
+  // Optimized followers fetch with simplified indexing
+  const fetchFollowersData = useCallback(async (snapshot) => {
+    try {
+      const followersData = [];
+      const batch = [];
+      
+      snapshot.docs.forEach(doc => {
+        const followerId = doc.data().followerId;
+        if (followerId) {
+          batch.push(getDoc(doc(db, 'users', followerId)));
+        }
+      });
+
+      const results = await Promise.all(batch);
+      results.forEach(userDoc => {
+        if (userDoc.exists()) {
+          followersData.push({
+            id: userDoc.id,
+            ...userDoc.data()
+          });
+        }
+      });
+
+      setFollowers(followersData);
+    } catch (error) {
+      console.error("Error fetching followers data:", error);
+    }
+  }, []);
+
+  // Optimized following fetch with simplified indexing
+  const fetchFollowingData = useCallback(async (snapshot) => {
+    try {
+      const followingData = [];
+      const batch = [];
+      
+      snapshot.docs.forEach(doc => {
+        const followingId = doc.data().followingId;
+        if (followingId) {
+          batch.push(getDoc(doc(db, 'users', followingId)));
+        }
+      });
+
+      const results = await Promise.all(batch);
+      results.forEach(userDoc => {
+        if (userDoc.exists()) {
+          followingData.push({
+            id: userDoc.id,
+            ...userDoc.data()
+          });
+        }
+      });
+
+      setFollowing(followingData);
+    } catch (error) {
+      console.error("Error fetching following data:", error);
+    }
+  }, []);
+
+  // Real-time followers updates with simplified indexing
   useEffect(() => {
     if (!initialized || !currentUser?.uid) return;
 
     const followersRef = collection(db, 'followers');
-    const q = query(followersRef, where('followingId', '==', currentUser.uid));
+    const q = query(
+      followersRef,
+      where('followingId', '==', currentUser.uid)
+    );
     
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      try {
-        const followersData = [];
-        for (const docSnap of snapshot.docs) {
-          try {
-            const userRef = doc(db, 'users', docSnap.data().followerId);
-            const userData = await getDoc(userRef);
-            if (userData.exists()) {
-              followersData.push({
-                id: docSnap.id,
-                ...userData.data()
-              });
-            }
-          } catch (error) {
-            console.error("Error fetching follower user data:", error);
-          }
-        }
-        setFollowers(followersData);
-      } catch (error) {
-        console.error("Error in followers listener:", error);
-      }
-    });
-
+    const unsubscribe = onSnapshot(q, fetchFollowersData);
     return () => unsubscribe();
-  }, [currentUser, initialized]);
+  }, [currentUser, initialized, fetchFollowersData]);
 
-  // Real-time following updates
+  // Real-time following updates with simplified indexing
   useEffect(() => {
     if (!initialized || !currentUser?.uid) return;
 
     const followingRef = collection(db, 'followers');
-    const q = query(followingRef, where('followerId', '==', currentUser.uid));
+    const q = query(
+      followingRef,
+      where('followerId', '==', currentUser.uid)
+    );
     
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      try {
-        const followingData = [];
-        for (const docSnap of snapshot.docs) {
-          try {
-            const userRef = doc(db, 'users', docSnap.data().followingId);
-            const userData = await getDoc(userRef);
-            if (userData.exists()) {
-              followingData.push({
-                id: docSnap.id,
-                ...userData.data()
-              });
-            }
-          } catch (error) {
-            console.error("Error fetching following user data:", error);
-          }
-        }
-        setFollowing(followingData);
-      } catch (error) {
-        console.error("Error in following listener:", error);
-      }
-    });
-
+    const unsubscribe = onSnapshot(q, fetchFollowingData);
     return () => unsubscribe();
-  }, [currentUser, initialized]);
+  }, [currentUser, initialized, fetchFollowingData]);
 
-  // Real-time activities updates
+  // Optimized activities updates with simplified indexing
   useEffect(() => {
     if (!initialized || !currentUser?.uid) return;
 
     const activitiesRef = collection(db, 'activities');
-    const q = query(activitiesRef, where('userId', '==', currentUser.uid));
+    const q = query(
+      activitiesRef,
+      where('userId', '==', currentUser.uid),
+      orderBy('timestamp', 'desc'),
+      limit(20)
+    );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       try {
-        const activitiesData = snapshot.docs
-          .map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }))
-          .sort((a, b) => b.timestamp?.toMillis() - a.timestamp?.toMillis());
+        const activitiesData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
         setActivities(activitiesData);
       } catch (error) {
         console.error("Error processing activities data:", error);
@@ -282,6 +323,7 @@ export function UserProvider({ children }) {
     following,
     activities,
     error,
+    isMobile,
     updateProfile,
     followUser,
     unfollowUser,

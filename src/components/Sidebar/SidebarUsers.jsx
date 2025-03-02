@@ -25,63 +25,44 @@ const SidebarUsers = () => {
   const searchTimeoutRef = useRef(null);
   const USERS_PER_PAGE = 5;
 
-  // Real-time users subscription with activity tracking
+  // Real-time users subscription with proper indexing
   useEffect(() => {
     if (!currentUser) return;
 
     const usersRef = collection(db, 'users');
+    // Simplified query to avoid complex index requirements
     const q = query(
       usersRef,
       where('uid', '!=', currentUser.uid),
       orderBy('uid'),
-      orderBy('lastActive', 'desc'),
       limit(USERS_PER_PAGE)
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       try {
-        const usersData = await Promise.all(
-          snapshot.docs.map(async (doc) => {
-            const userData = { id: doc.id, ...doc.data() };
-            
-            // Fetch user's latest activity
-            const activityRef = collection(db, 'activities');
-            const activityQuery = query(
-              activityRef,
-              where('userId', '==', doc.id),
-              orderBy('timestamp', 'desc'),
-              limit(1)
-            );
-            
-            try {
-              const activitySnapshot = await getDocs(activityQuery);
-              if (!activitySnapshot.empty) {
-                userData.lastActivity = activitySnapshot.docs[0].data();
-              }
-            } catch (error) {
-              console.error('Error fetching activity:', error);
-            }
-            
-            return userData;
-          })
+        const usersData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Sort by lastActive in memory instead of in query
+        const sortedUsers = usersData.sort((a, b) => 
+          (b.lastActive?.toMillis() || 0) - (a.lastActive?.toMillis() || 0)
         );
         
-        setUsers(usersData);
+        setUsers(sortedUsers);
         setLoading(false);
         lastUserRef.current = snapshot.docs[snapshot.docs.length - 1];
       } catch (error) {
         console.error('Error fetching users:', error);
         setLoading(false);
       }
-    }, (error) => {
-      console.error('Users subscription error:', error);
-      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Enhanced search functionality with proper indexing
+  // Enhanced search functionality with simpler indexing
   const handleSearch = async (value) => {
     setSearchQuery(value);
     if (searchTimeoutRef.current) {
@@ -100,7 +81,7 @@ const SidebarUsers = () => {
         const usersRef = collection(db, 'users');
         const searchLower = value.toLowerCase();
         
-        // Search by displayName only to avoid index issues
+        // Simplified query with single field index
         const q = query(
           usersRef,
           where('displayNameLower', '>=', searchLower),
@@ -125,7 +106,7 @@ const SidebarUsers = () => {
     }, 300);
   };
 
-  // Load more users with proper indexing
+  // Load more users with simplified indexing
   const loadMoreUsers = async () => {
     if (!lastUserRef.current || !hasMore || isSearching) return;
 
@@ -136,7 +117,6 @@ const SidebarUsers = () => {
         usersRef,
         where('uid', '!=', currentUser.uid),
         orderBy('uid'),
-        orderBy('lastActive', 'desc'),
         startAfter(lastUserRef.current),
         limit(USERS_PER_PAGE)
       );
@@ -153,7 +133,12 @@ const SidebarUsers = () => {
         ...doc.data()
       }));
 
-      setUsers(prevUsers => [...prevUsers, ...newUsers]);
+      // Sort by lastActive in memory
+      const sortedUsers = [...users, ...newUsers].sort((a, b) => 
+        (b.lastActive?.toMillis() || 0) - (a.lastActive?.toMillis() || 0)
+      );
+
+      setUsers(sortedUsers);
       lastUserRef.current = snapshot.docs[snapshot.docs.length - 1];
     } catch (error) {
       console.error('Error loading more users:', error);

@@ -80,7 +80,7 @@ const ActivityItem = ({ activity, onMarkRead, onDelete, isSelected, onSelect }) 
       animate={{ opacity: 1, y: 0 }}
       className={`flex items-center p-4 rounded-lg ${
         activity.read ? 'bg-dark/30' : 'bg-dark/50'
-      } hover:bg-light/5 transition-colors relative group`}
+      } hover:bg-light/5 transition-colors relative group max-w-full overflow-hidden sm:overflow-visible`}
     >
       <div className="flex-shrink-0">
         <input
@@ -91,8 +91,8 @@ const ActivityItem = ({ activity, onMarkRead, onDelete, isSelected, onSelect }) 
         />
       </div>
 
-      <Link to={`/profile/${activity.userId}`} className="flex items-center space-x-4 flex-1">
-        <div className="w-10 h-10 rounded-full overflow-hidden bg-light/10 flex-shrink-0">
+      <Link to={`/profile/${activity.userId}`} className="flex items-center space-x-4 flex-1 min-w-0">
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-light/10 flex-shrink-0">
           {userData?.photoURL ? (
             <img
               src={userData.photoURL}
@@ -101,39 +101,41 @@ const ActivityItem = ({ activity, onMarkRead, onDelete, isSelected, onSelect }) 
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <DefaultUserIcon className="w-6 h-6 text-white/50" />
+              <DefaultUserIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white/50" />
             </div>
           )}
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center space-x-2">
-            <span className="font-medium text-white">
+        <div className="flex-1 min-w-0 truncate">
+          <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap">
+            <span className="font-medium text-white text-sm sm:text-base truncate">
               {userData?.displayName || 'User'}
             </span>
-            <span className="text-white/50">{getActivityMessage()}</span>
+            <span className="text-white/50 text-sm sm:text-base truncate">
+              {getActivityMessage()}
+            </span>
           </div>
-          <p className="text-sm text-white/40">
+          <p className="text-xs sm:text-sm text-white/40 truncate">
             {getFormattedTime(activity.timestamp)}
           </p>
         </div>
       </Link>
 
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
         {getActivityIcon()}
         {!activity.read && (
           <button
             onClick={() => onMarkRead(activity.id)}
-            className="p-2 hover:bg-light/10 rounded-full transition-colors"
+            className="p-1 sm:p-2 hover:bg-light/10 rounded-full transition-colors"
           >
-            <UilCheckCircle className="w-5 h-5 text-primary" />
+            <UilCheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
           </button>
         )}
         <button
           onClick={() => onDelete(activity.id)}
-          className="p-2 hover:bg-red-500/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+          className="p-1 sm:p-2 hover:bg-red-500/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
         >
-          <UilTrashAlt className="w-5 h-5 text-red-500" />
+          <UilTrashAlt className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
         </button>
       </div>
     </motion.div>
@@ -253,17 +255,17 @@ const ActivityFeed = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-2xl font-bold">Activity Feed</h2>
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div className="flex items-center space-x-4 w-full sm:w-auto">
+          <h2 className="text-xl sm:text-2xl font-bold">Activity Feed</h2>
           {selectedActivities.size > 0 && (
             <div className="flex items-center space-x-2">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleBulkAction('markRead')}
-                className="px-3 py-1 bg-primary text-white rounded-full text-sm"
+                className="px-2 sm:px-3 py-1 bg-primary text-white rounded-full text-xs sm:text-sm"
               >
                 Mark Read
               </motion.button>
@@ -271,62 +273,51 @@ const ActivityFeed = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleBulkAction('delete')}
-                className="px-3 py-1 bg-red-500 text-white rounded-full text-sm"
+                className="px-2 sm:px-3 py-1 bg-red-500 text-white rounded-full text-xs sm:text-sm"
               >
                 Delete
               </motion.button>
             </div>
           )}
         </div>
-        <div className="flex items-center space-x-4">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={selectAll}
-            className="px-3 py-1 bg-light text-white/70 hover:text-white rounded-full text-sm"
-          >
-            {selectedActivities.size === activities.length ? 'Deselect All' : 'Select All'}
-          </motion.button>
-          <div className="flex space-x-2">
-            {activityTypes.map(type => (
-              <motion.button
-                key={type.id}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setFilter(type.id)}
-                className={`px-4 py-2 rounded-full text-sm
-                  ${filter === type.id ? 
-                    'bg-primary text-white' : 
-                    'bg-light text-white/70 hover:text-white hover:bg-light/70'}`}
-              >
-                {type.label}
-              </motion.button>
-            ))}
-          </div>
+
+        <div className="flex items-center space-x-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0">
+          {activityTypes.map((type) => (
+            <button
+              key={type.id}
+              onClick={() => setFilter(type.id)}
+              className={`px-3 py-1 rounded-full text-xs sm:text-sm whitespace-nowrap ${
+                filter === type.id
+                  ? 'bg-primary text-white'
+                  : 'bg-light/10 text-white/70 hover:bg-light/20'
+              }`}
+            >
+              {type.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-8">
-          <UilSpinner className="w-8 h-8 animate-spin text-primary" />
+        <div className="flex items-center justify-center py-8">
+          <UilSpinner className="w-8 h-8 text-primary animate-spin" />
+        </div>
+      ) : filteredActivities.length === 0 ? (
+        <div className="text-center py-8 bg-light/5 rounded-lg">
+          <p className="text-white/50">No activities to display</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {filteredActivities.map(activity => (
+        <div className="space-y-2 sm:space-y-3">
+          {filteredActivities.map((activity) => (
             <ActivityItem
               key={activity.id}
               activity={activity}
               onMarkRead={handleMarkRead}
               onDelete={handleDelete}
               isSelected={selectedActivities.has(activity.id)}
-              onSelect={(selected) => toggleSelectActivity(activity.id, selected)}
+              onSelect={toggleSelectActivity}
             />
           ))}
-          {filteredActivities.length === 0 && (
-            <div className="text-center py-12 bg-light/20 rounded-lg">
-              <p className="text-white/70">No activities to show</p>
-            </div>
-          )}
         </div>
       )}
     </div>
