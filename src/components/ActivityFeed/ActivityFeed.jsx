@@ -3,29 +3,48 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   UilMusic, UilHeart, UilListUl, UilUser,
   UilClock, UilRefresh, UilFilter, UilSpinner,
-  UilCheck, UilTrashAlt, UilEye
+  UilCheck, UilTrashAlt, UilEye, UilUserPlus, UilCheckCircle
 } from '@iconscout/react-unicons';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../config/firebase.config';
 import { 
   collection, query, where, orderBy, 
   getDocs, onSnapshot, updateDoc, doc,
-  deleteDoc, writeBatch, serverTimestamp
+  deleteDoc, writeBatch, serverTimestamp, getDoc,
+  limit
 } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'react-hot-toast';
+import { Link } from 'react-router-dom';
+import DefaultUserIcon from '../icons/DefaultUserIcon';
 
 const ActivityItem = ({ activity, onMarkRead, onDelete, isSelected, onSelect }) => {
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userRef = doc(db, 'users', activity.userId);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          setUserData(userSnap.data());
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, [activity.userId]);
+
   const getActivityIcon = () => {
     switch (activity.type) {
-      case 'upload':
-        return <UilMusic className="w-5 h-5 text-blue-500" />;
+      case 'follow':
+        return <UilUserPlus className="w-5 h-5 text-primary" />;
       case 'like':
         return <UilHeart className="w-5 h-5 text-red-500" />;
-      case 'playlist':
-        return <UilListUl className="w-5 h-5 text-green-500" />;
-      case 'follow':
-        return <UilUser className="w-5 h-5 text-purple-500" />;
+      case 'upload':
+        return <UilMusic className="w-5 h-5 text-green-500" />;
       default:
         return <UilMusic className="w-5 h-5 text-primary" />;
     }
@@ -33,92 +52,89 @@ const ActivityItem = ({ activity, onMarkRead, onDelete, isSelected, onSelect }) 
 
   const getActivityMessage = () => {
     switch (activity.type) {
-      case 'upload':
-        return `uploaded "${activity.trackName}"`;
-      case 'like':
-        return `liked "${activity.trackName}"`;
-      case 'playlist':
-        return `added "${activity.trackName}" to ${activity.playlistName}`;
       case 'follow':
-        return `started following ${activity.targetUserName}`;
+        return 'started following you';
+      case 'like':
+        return `liked your track "${activity.trackName}"`;
+      case 'upload':
+        return `uploaded a new track "${activity.trackName}"`;
       default:
-        return activity.message;
+        return 'performed an action';
     }
   };
 
   const getFormattedTime = (timestamp) => {
-    if (!timestamp) return 'Just now';
-    try {
-      if (timestamp.toDate) {
-        return formatDistanceToNow(timestamp.toDate(), { addSuffix: true });
-      }
-      return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
-    } catch (error) {
-      return 'Just now';
-    }
+    if (!timestamp) return '';
+    const date = timestamp.toDate();
+    return new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className={`flex space-x-3 p-4 rounded-lg group relative ${
+      className={`flex items-center p-4 rounded-lg ${
         activity.read ? 'bg-dark/30' : 'bg-dark/50'
-      } ${isSelected ? 'ring-2 ring-primary' : ''}`}
+      } hover:bg-light/5 transition-colors relative group`}
     >
-      <div className="absolute top-2 right-2 flex items-center space-x-2">
+      <div className="flex-shrink-0">
         <input
           type="checkbox"
           checked={isSelected}
           onChange={(e) => onSelect(activity.id, e.target.checked)}
-          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+          className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity"
         />
       </div>
-      
-      <img
-        src={activity.userPhotoURL || '/default-avatar.png'}
-        alt={activity.userName}
-        className="w-8 h-8 rounded-full"
-      />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between">
-          <div>
-            <span className="font-medium text-sm text-white">{activity.userName}</span>
-            <p className="text-sm mt-1 text-white/90">{activity.text}</p>
-          </div>
-        </div>
-        <div className="flex items-center space-x-2 mt-1">
-          <UilClock className="w-3 h-3 text-white/70" />
-          <span className="text-xs text-white/70">
-            {getFormattedTime(activity.timestamp)}
-          </span>
-          {!activity.read && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary text-white">
-              New
-            </span>
+
+      <Link to={`/profile/${activity.userId}`} className="flex items-center space-x-4 flex-1">
+        <div className="w-10 h-10 rounded-full overflow-hidden bg-light/10 flex-shrink-0">
+          {userData?.photoURL ? (
+            <img
+              src={userData.photoURL}
+              alt={userData.displayName}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <DefaultUserIcon className="w-6 h-6 text-white/50" />
+            </div>
           )}
         </div>
-      </div>
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-2">
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2">
+            <span className="font-medium text-white">
+              {userData?.displayName || 'User'}
+            </span>
+            <span className="text-white/50">{getActivityMessage()}</span>
+          </div>
+          <p className="text-sm text-white/40">
+            {getFormattedTime(activity.timestamp)}
+          </p>
+        </div>
+      </Link>
+
+      <div className="flex items-center space-x-2">
+        {getActivityIcon()}
         {!activity.read && (
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+          <button
             onClick={() => onMarkRead(activity.id)}
-            className="p-1 hover:bg-light/30 rounded-full text-white/70 hover:text-white"
+            className="p-2 hover:bg-light/10 rounded-full transition-colors"
           >
-            <UilEye className="w-4 h-4" />
-          </motion.button>
+            <UilCheckCircle className="w-5 h-5 text-primary" />
+          </button>
         )}
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
+        <button
           onClick={() => onDelete(activity.id)}
-          className="p-1 hover:bg-light/30 rounded-full text-white/70 hover:text-red-500"
+          className="p-2 hover:bg-red-500/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
         >
-          <UilTrashAlt className="w-4 h-4" />
-        </motion.button>
+          <UilTrashAlt className="w-5 h-5 text-red-500" />
+        </button>
       </div>
     </motion.div>
   );
@@ -134,24 +150,27 @@ const ActivityFeed = () => {
   useEffect(() => {
     if (!currentUser) return;
 
+    const activitiesRef = collection(db, 'activities');
     const q = query(
-      collection(db, 'activities'),
-      where('userId', '==', currentUser.uid)
+      activitiesRef,
+      where('targetUserId', '==', currentUser.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const activityList = snapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }))
-        .sort((a, b) => {
-          const timestampA = a.timestamp?.toMillis() || 0;
-          const timestampB = b.timestamp?.toMillis() || 0;
-          return timestampB - timestampA;
-        });
-      setActivities(activityList);
-      setLoading(false);
+      try {
+        const activitiesData = snapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          .sort((a, b) => b.timestamp?.toMillis() - a.timestamp?.toMillis())
+          .slice(0, 20);
+        setActivities(activitiesData);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching activities:', error);
+        setLoading(false);
+      }
     });
 
     return () => unsubscribe();
@@ -161,51 +180,37 @@ const ActivityFeed = () => {
     try {
       const activityRef = doc(db, 'activities', activityId);
       await updateDoc(activityRef, {
-        read: true,
-        readAt: serverTimestamp()
+        read: true
       });
-      toast.success('Marked as read');
     } catch (error) {
       console.error('Error marking activity as read:', error);
-      toast.error('Failed to mark as read');
     }
   };
 
   const handleDelete = async (activityId) => {
     try {
-      await deleteDoc(doc(db, 'activities', activityId));
-      toast.success('Activity deleted');
+      const activityRef = doc(db, 'activities', activityId);
+      await deleteDoc(activityRef);
     } catch (error) {
       console.error('Error deleting activity:', error);
-      toast.error('Failed to delete activity');
     }
   };
 
   const handleBulkAction = async (action) => {
-    if (selectedActivities.size === 0) return;
-
-    const batch = writeBatch(db);
-    const selectedIds = Array.from(selectedActivities);
-
     try {
-      for (const id of selectedIds) {
-        const activityRef = doc(db, 'activities', id);
-        if (action === 'read') {
-          batch.update(activityRef, {
-            read: true,
-            readAt: serverTimestamp()
-          });
-        } else if (action === 'delete') {
+      const batch = writeBatch(db);
+      selectedActivities.forEach(activityId => {
+        const activityRef = doc(db, 'activities', activityId);
+        if (action === 'delete') {
           batch.delete(activityRef);
+        } else if (action === 'markRead') {
+          batch.update(activityRef, { read: true });
         }
-      }
-
+      });
       await batch.commit();
       setSelectedActivities(new Set());
-      toast.success(`${action === 'read' ? 'Marked selected as read' : 'Deleted selected activities'}`);
     } catch (error) {
-      console.error(`Error performing bulk ${action}:`, error);
-      toast.error(`Failed to ${action} selected activities`);
+      console.error('Error performing bulk action:', error);
     }
   };
 
@@ -257,7 +262,7 @@ const ActivityFeed = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => handleBulkAction('read')}
+                onClick={() => handleBulkAction('markRead')}
                 className="px-3 py-1 bg-primary text-white rounded-full text-sm"
               >
                 Mark Read

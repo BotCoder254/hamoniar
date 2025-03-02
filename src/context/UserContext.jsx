@@ -17,6 +17,7 @@ import {
   addDoc,
   deleteDoc
 } from 'firebase/firestore';
+import { toast } from 'react-hot-toast';
 
 const UserContext = createContext();
 
@@ -29,6 +30,7 @@ export function UserProvider({ children }) {
   const [followers, setFollowers] = useState([]);
   const [following, setFollowing] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [error, setError] = useState(null);
 
   // Real-time user profile updates
   useEffect(() => {
@@ -47,6 +49,7 @@ export function UserProvider({ children }) {
       setLoading(false);
     }, (error) => {
       console.error("Error in user profile listener:", error);
+      setError(error);
       setLoading(false);
     });
 
@@ -63,12 +66,13 @@ export function UserProvider({ children }) {
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       try {
         const followersData = [];
-        for (const doc of snapshot.docs) {
+        for (const docSnap of snapshot.docs) {
           try {
-            const userData = await getDoc(doc(db, 'users', doc.data().followerId));
+            const userRef = doc(db, 'users', docSnap.data().followerId);
+            const userData = await getDoc(userRef);
             if (userData.exists()) {
               followersData.push({
-                id: doc.id,
+                id: docSnap.id,
                 ...userData.data()
               });
             }
@@ -80,8 +84,6 @@ export function UserProvider({ children }) {
       } catch (error) {
         console.error("Error in followers listener:", error);
       }
-    }, (error) => {
-      console.error("Followers listener error:", error);
     });
 
     return () => unsubscribe();
@@ -97,12 +99,13 @@ export function UserProvider({ children }) {
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       try {
         const followingData = [];
-        for (const doc of snapshot.docs) {
+        for (const docSnap of snapshot.docs) {
           try {
-            const userData = await getDoc(doc(db, 'users', doc.data().followingId));
+            const userRef = doc(db, 'users', docSnap.data().followingId);
+            const userData = await getDoc(userRef);
             if (userData.exists()) {
               followingData.push({
-                id: doc.id,
+                id: docSnap.id,
                 ...userData.data()
               });
             }
@@ -114,8 +117,6 @@ export function UserProvider({ children }) {
       } catch (error) {
         console.error("Error in following listener:", error);
       }
-    }, (error) => {
-      console.error("Following listener error:", error);
     });
 
     return () => unsubscribe();
@@ -130,16 +131,16 @@ export function UserProvider({ children }) {
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       try {
-        const activitiesData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const activitiesData = snapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          .sort((a, b) => b.timestamp?.toMillis() - a.timestamp?.toMillis());
         setActivities(activitiesData);
       } catch (error) {
         console.error("Error processing activities data:", error);
       }
-    }, (error) => {
-      console.error("Activities listener error:", error);
     });
 
     return () => unsubscribe();
@@ -167,91 +168,70 @@ export function UserProvider({ children }) {
 
   // Follow user function
   const followUser = async (targetUserId) => {
-    if (!currentUser) throw new Error('No user logged in');
-    if (targetUserId === currentUser.uid) throw new Error('Cannot follow yourself');
+    if (!currentUser) {
+      toast.error('Please log in to follow users');
+      return;
+    }
 
     try {
-      // Add follow relationship
-      const followRef = collection(db, 'followers');
-      await addDoc(followRef, {
-        followerId: currentUser.uid,
-        followingId: targetUserId,
-        timestamp: serverTimestamp()
-      });
-
-      // Update user stats
       const userRef = doc(db, 'users', currentUser.uid);
       const targetUserRef = doc(db, 'users', targetUserId);
 
+      // Add to following
       await updateDoc(userRef, {
-        'stats.following': increment(1)
+        following: arrayUnion(targetUserId)
       });
 
+      // Add to followers
       await updateDoc(targetUserRef, {
-        'stats.followers': increment(1)
+        followers: arrayUnion(currentUser.uid),
+        followerCount: increment(1)
       });
 
-      // Add to activities
+      // Create activity
       const activityRef = collection(db, 'activities');
       await addDoc(activityRef, {
+        type: 'follow',
         userId: currentUser.uid,
-        targetUserId,
-        type: 'FOLLOW',
-        timestamp: serverTimestamp()
+        targetUserId: targetUserId,
+        timestamp: serverTimestamp(),
+        read: false
       });
 
-      return true;
+      toast.success('Successfully followed user');
     } catch (error) {
       console.error('Error following user:', error);
+      toast.error('Failed to follow user');
       throw error;
     }
   };
 
   // Unfollow user function
   const unfollowUser = async (targetUserId) => {
-    if (!currentUser) throw new Error('No user logged in');
-    if (targetUserId === currentUser.uid) throw new Error('Cannot unfollow yourself');
+    if (!currentUser) {
+      toast.error('Please log in to unfollow users');
+      return;
+    }
 
     try {
-      // Find and remove follow relationship
-      const followRef = collection(db, 'followers');
-      const q = query(
-        followRef,
-        where('followerId', '==', currentUser.uid),
-        where('followingId', '==', targetUserId)
-      );
+      const userRef = doc(db, 'users', currentUser.uid);
+      const targetUserRef = doc(db, 'users', targetUserId);
 
-      const querySnapshot = await getDocs(q);
-      const followDoc = querySnapshot.docs[0];
+      // Remove from following
+      await updateDoc(userRef, {
+        following: arrayRemove(targetUserId)
+      });
 
-      if (followDoc) {
-        await deleteDoc(followDoc.ref);
+      // Remove from followers
+      await updateDoc(targetUserRef, {
+        followers: arrayRemove(currentUser.uid),
+        followerCount: increment(-1)
+      });
 
-        // Update user stats
-        const userRef = doc(db, 'users', currentUser.uid);
-        const targetUserRef = doc(db, 'users', targetUserId);
-
-        await updateDoc(userRef, {
-          'stats.following': increment(-1)
-        });
-
-        await updateDoc(targetUserRef, {
-          'stats.followers': increment(-1)
-        });
-
-        // Add to activities
-        const activityRef = collection(db, 'activities');
-        await addDoc(activityRef, {
-          userId: currentUser.uid,
-          targetUserId,
-          type: 'UNFOLLOW',
-          timestamp: serverTimestamp()
-        });
-
-        return true;
-      }
+      toast.success('Successfully unfollowed user');
     } catch (error) {
       console.error('Error unfollowing user:', error);
+      toast.error('Failed to unfollow user');
       throw error;
     }
   };
@@ -259,17 +239,13 @@ export function UserProvider({ children }) {
   // Check if following a user
   const isFollowing = async (targetUserId) => {
     if (!currentUser) return false;
-    
-    try {
-      const followRef = collection(db, 'followers');
-      const q = query(
-        followRef,
-        where('followerId', '==', currentUser.uid),
-        where('followingId', '==', targetUserId)
-      );
 
-      const querySnapshot = await getDocs(q);
-      return !querySnapshot.empty;
+    try {
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      if (!userDoc.exists()) return false;
+
+      const userData = userDoc.data();
+      return userData.following?.includes(targetUserId) || false;
     } catch (error) {
       console.error('Error checking follow status:', error);
       return false;
@@ -305,6 +281,7 @@ export function UserProvider({ children }) {
     followers,
     following,
     activities,
+    error,
     updateProfile,
     followUser,
     unfollowUser,
