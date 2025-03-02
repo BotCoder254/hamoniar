@@ -1,21 +1,27 @@
-FROM node:18-alpine AS deps
+FROM node:18-alpine
+
 WORKDIR /app
-COPY package.json package-lock.json ./
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
 RUN npm ci
 
-FROM node:18-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy the rest of the application
 COPY . .
+
+# Build the application
 RUN npm run build
 
-FROM node:18-alpine AS runner
-WORKDIR /app
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-COPY --from=builder /app/build ./build
+# Install serve
 RUN npm install -g serve
-USER nextjs
+
+# Expose port 3000
 EXPOSE 3000
-ENV PORT 3000
-CMD ["serve", "-s", "build"] 
+
+# Set environment variable for port
+ENV PORT=3000
+
+# Start the application
+CMD ["serve", "-s", "build", "-l", "3000"] 

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: hamoniar
+    env: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm install -g serve && serve -s build
+    envVars:
+      - key: NODE_VERSION
+        value: 18.0.0
+      - key: NODE_ENV
+        value: production
+    autoDeploy: true
+    healthCheckPath: /
+    disk:
+      name: hamoniar-uploads
+      mountPath: /app/uploads
+      sizeGB: 10
+    plan: starter 
