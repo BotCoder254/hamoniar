@@ -90,15 +90,7 @@ function App() {
                       <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                       <Route path="/activity" element={<ProtectedRoute><Activity /></ProtectedRoute>} />
-                      <Route path="/following" element={<ProtectedRoute><Activity /></ProtectedRoute>} />
-                      <Route 
-                        path="/trending" 
-                        element={
-                          <ProtectedRoute>
-                            <TrendingPage />
-                          </ProtectedRoute>
-                        } 
-                      />
+                      <Route path="/trending" element={<ProtectedRoute><TrendingPage /></ProtectedRoute>} />
 
                       {/* Fallback */}
                       <Route path="*" element={<Navigate to="/" replace />} />

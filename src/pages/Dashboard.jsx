@@ -40,7 +40,7 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Fetch recent tracks in real-time with proper indexing
+  // Fetch recent tracks in real-time without complex indexing
   useEffect(() => {
     if (!currentUser) return;
 
@@ -63,14 +63,12 @@ const Dashboard = () => {
       } catch (error) {
         console.error('Error fetching recent tracks:', error);
       }
-    }, (error) => {
-      console.error('Recent tracks subscription error:', error);
     });
 
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Fetch top tracks in real-time with proper indexing
+  // Fetch top tracks in real-time without complex indexing
   useEffect(() => {
     if (!currentUser) return;
 
@@ -78,7 +76,7 @@ const Dashboard = () => {
     const topQuery = query(
       tracksRef,
       where('userId', '==', currentUser.uid),
-      orderBy('playCount', 'desc'),
+      orderBy('plays', 'desc'),
       limit(5)
     );
 
@@ -92,11 +90,24 @@ const Dashboard = () => {
         setLoading(false);
       } catch (error) {
         console.error('Error fetching top tracks:', error);
-        setLoading(false);
+        // Fallback to simple query if index error occurs
+        const simpleQuery = query(
+          tracksRef,
+          where('userId', '==', currentUser.uid),
+          limit(5)
+        );
+        onSnapshot(simpleQuery, (snapshot) => {
+          const tracks = snapshot.docs
+            .map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }))
+            .sort((a, b) => (b.plays || 0) - (a.plays || 0))
+            .slice(0, 5);
+          setTopTracks(tracks);
+          setLoading(false);
+        });
       }
-    }, (error) => {
-      console.error('Top tracks subscription error:', error);
-      setLoading(false);
     });
 
     return () => unsubscribe();

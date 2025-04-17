@@ -34,9 +34,8 @@ const Sidebar = () => {
     { to: '/', icon: UilEstate, label: 'Home' },
     { to: '/discover', icon: UilCompass, label: 'Discover' },
     { to: '/library', icon: UilMusic, label: 'Library' },
-    { to: '/liked', icon: UilHeart, label: 'Liked Tracks' },
-    { to: '/history', icon: UilHistory, label: 'History' },
-    { to: '/following', icon: UilUsersAlt, label: 'Following' },
+    { to: '/trending', icon: UilChart, label: 'Trending' },
+    { to: '/activity', icon: UilHistory, label: 'Activity' },
     { to: '/upload', icon: UilUpload, label: 'Upload' },
     { to: '/dashboard', icon: UilChart, label: 'Dashboard' }
   ];
