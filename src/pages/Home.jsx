@@ -33,6 +33,10 @@ const Home = () => {
         ...doc.data()
       }));
       setTrendingTracks(tracks);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching trending tracks:', error);
+      setLoading(false);
     });
 
     return () => unsubscribe();

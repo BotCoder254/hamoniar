@@ -100,9 +100,20 @@ const MusicPlayer = () => {
     if (!currentUser || !state.currentSong?.id) return;
     
     try {
-      await updateDoc(doc(db, 'music', state.currentSong.id), {
-        plays: increment(1)
-      });
+      const musicRef = doc(db, 'music', state.currentSong.id);
+      const trackRef = doc(db, 'tracks', state.currentSong.id);
+      
+      // Try to update the play count in both collections
+      const updates = [
+        updateDoc(musicRef, {
+          plays: increment(1)
+        }).catch(() => null), // Ignore error if document doesn't exist
+        updateDoc(trackRef, {
+          plays: increment(1)
+        }).catch(() => null)  // Ignore error if document doesn't exist
+      ];
+      
+      await Promise.all(updates);
     } catch (error) {
       console.error('Error updating play count:', error);
     }
@@ -175,11 +186,32 @@ const MusicPlayer = () => {
   };
 
   const handleSongEnd = () => {
-    if (state.repeat) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play();
+    if (repeatMode === 'one') {
+      if (state.currentSong?.howl) {
+        state.currentSong.howl.seek(0);
+        state.currentSong.howl.play();
+      }
+    } else if (repeatMode === 'all') {
+      if (currentSongIndex >= playHistory.length - 1) {
+        // If at the end of playlist, start from beginning
+        if (playHistory.length > 0) {
+          setCurrentSongIndex(0);
+          dispatch({ type: 'SET_CURRENT_SONG', payload: playHistory[0] });
+        }
+      } else {
+        playNextSong();
+      }
     } else {
-      playNextSong();
+      // No repeat mode
+      if (currentSongIndex < playHistory.length - 1) {
+        playNextSong();
+      } else {
+        // Stop playing at the end of playlist
+        setIsPlaying(false);
+        if (state.currentSong?.howl) {
+          state.currentSong.howl.stop();
+        }
+      }
     }
   };
 
@@ -194,12 +226,19 @@ const MusicPlayer = () => {
   };
 
   const playNextSong = () => {
-    if (!playHistory.length || currentSongIndex >= playHistory.length - 1) return;
+    if (!playHistory.length) return;
+    
     const nextIndex = currentSongIndex + 1;
-    const nextSong = playHistory[nextIndex];
-    if (nextSong) {
-      setCurrentSongIndex(nextIndex);
-      dispatch({ type: 'SET_CURRENT_SONG', payload: nextSong });
+    if (nextIndex < playHistory.length) {
+      const nextSong = playHistory[nextIndex];
+      if (nextSong) {
+        setCurrentSongIndex(nextIndex);
+        dispatch({ type: 'SET_CURRENT_SONG', payload: nextSong });
+      }
+    } else if (repeatMode === 'all') {
+      // If repeat all is enabled and we're at the end, go back to start
+      setCurrentSongIndex(0);
+      dispatch({ type: 'SET_CURRENT_SONG', payload: playHistory[0] });
     }
   };
 
